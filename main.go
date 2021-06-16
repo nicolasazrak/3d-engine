@@ -169,13 +169,14 @@ func (scene *Scene) drawModel() {
 			})
 		}
 
-		lightNormal := normalize(minus(triangle.verts[0], scene.lightPosition))
-		intensity := dotProduct(triangle.normal, lightNormal) * .8
+		lightNormal := normalize(minus(scene.lightPosition, triangle.verts[0]))
+		intensity := dotProduct(lightNormal, triangle.normal) * .8
 		c := color.RGBA{uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255), 255}
-		if intensity > 0 {
+		if intensity < 0 {
 			// Shoudln't be needed if there was occulsion culling or shadows ?
 			c = color.RGBA{0, 0, 0, 0}
 		}
+
 		scene.drawTriangle(verts, c)
 	}
 }
@@ -237,7 +238,7 @@ func main() {
 		height:         cv.Height(),
 		fWidth:         float64(cv.Width()),
 		fHeight:        float64(cv.Height()),
-		lightPosition:  Vector3{0, 0, 10},
+		lightPosition:  Vector3{0, 0, -10},
 		cameraPosition: Vector3{0, 0, 0},
 	}
 
