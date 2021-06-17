@@ -1,7 +1,6 @@
 package main
 
 import (
-	"image/color"
 	"math"
 )
 
@@ -14,12 +13,6 @@ type Vector3 struct {
 type Vector2 struct {
 	x float64
 	y float64
-}
-
-type Triangle struct {
-	verts  []Vector3
-	color  color.Color
-	normal Vector3
 }
 
 func boundingBox(pts []Vector3) (Vector2, Vector2) {
@@ -70,4 +63,12 @@ func baycentricCoordinates(x float64, y float64, triangle []Vector3) Vector3 {
 
 func orient2d(a Vector3, b Vector3, x float64, y float64) int {
 	return int((b.x-a.x)*(y-a.y) - (b.y-a.y)*(x-a.x))
+}
+
+func ponderate(pts []Vector3, weights []float64) Vector3 {
+	return Vector3{
+		x: pts[0].x*weights[0] + pts[1].x*weights[1] + pts[2].x*weights[2],
+		y: pts[0].y*weights[0] + pts[1].y*weights[1] + pts[2].y*weights[2],
+		z: pts[0].z*weights[0] + pts[1].z*weights[1] + pts[2].z*weights[2],
+	}
 }

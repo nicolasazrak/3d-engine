@@ -3,22 +3,16 @@ package main
 import (
 	"fmt"
 	"image"
-	"image/color"
-	"io/ioutil"
 	"math"
-	"os"
-	"runtime/pprof"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/tfriedel6/canvas/sdlcanvas"
 )
 
 type Scene struct {
-	models         []Triangle
+	models         []*Model
 	zBuffer        []float64
-	colorBuffer    []color.Color
+	pixBuffer      []uint8
 	width          int
 	height         int
 	fWidth         float64
@@ -27,98 +21,7 @@ type Scene struct {
 	cameraPosition Vector3
 }
 
-func parseModel(path string) []Triangle {
-	triangles := []Triangle{}
-	f, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	str := string(f)
-	vertex := []Vector3{}
-	for _, line := range strings.Split(str, "\n") {
-		if strings.HasPrefix(line, "v ") {
-			splitted := strings.Split(line, " ")
-			x, err := strconv.ParseFloat(splitted[1], 64)
-			if err != nil {
-				print(line)
-				panic(err)
-			}
-			y, err := strconv.ParseFloat(splitted[2], 64)
-			if err != nil {
-				panic(err)
-			}
-			z, err := strconv.ParseFloat(splitted[3], 64)
-			if err != nil {
-				panic(err)
-			}
-			vertex = append(vertex, Vector3{x, y, z})
-		}
-
-		if strings.HasPrefix(line, "f ") {
-			splitted := strings.Split(line, " ")
-			idx1, err := strconv.ParseInt(strings.Split(splitted[1], "/")[0], 10, 32)
-			if err != nil {
-				panic(err)
-			}
-			idx2, err := strconv.ParseInt(strings.Split(splitted[2], "/")[0], 10, 32)
-			if err != nil {
-				panic(err)
-			}
-			idx3, err := strconv.ParseInt(strings.Split(splitted[3], "/")[0], 10, 32)
-			if err != nil {
-				panic(err)
-			}
-
-			v1 := minus(vertex[idx3-1], vertex[idx1-1])
-			v2 := minus(vertex[idx2-1], vertex[idx1-1])
-			normal := normalize(crossProduct(v1, v2))
-
-			triangles = append(triangles, Triangle{
-				verts:  []Vector3{vertex[idx1-1], vertex[idx2-1], vertex[idx3-1]},
-				color:  color.White,
-				normal: normal,
-			})
-		}
-	}
-
-	return triangles
-}
-
-func (scene *Scene) drawLine(x0, y0, x1, y1 float64, image *image.RGBA, color color.Color) {
-	steep := false
-	if math.Abs(x0-x1) < math.Abs(y0-y1) {
-		y0, x0 = x0, y0
-		y1, x1 = x1, y1
-		steep = true
-	}
-	if x0 > x1 {
-		x0, x1 = x1, x0
-		y0, y1 = y1, y0
-	}
-	dx := x1 - x0
-	dy := y1 - y0
-	derror2 := math.Abs(dy) * 2
-	error2 := float64(0)
-	y := int(y0)
-	for x := int(x0); x <= int(x1); x++ {
-		if steep {
-			image.Set(y, x, color)
-		} else {
-			image.Set(x, y, color)
-		}
-		error2 += derror2
-		if error2 > dx {
-			if y1 > y0 {
-				y += 1
-			} else {
-				y -= 1
-			}
-			error2 -= dx * 2
-		}
-	}
-}
-
-func (scene *Scene) drawTriangle(pts []Vector3, color color.Color) {
+func (scene *Scene) drawTriangle(model *Model, triangle Triangle, pts []Vector3) {
 	minbbox, maxbbox := boundingBox(pts)
 	A01 := int(pts[0].y - pts[1].y)
 	B01 := int(pts[1].x - pts[0].x)
@@ -138,11 +41,18 @@ func (scene *Scene) drawTriangle(pts []Vector3, color color.Color) {
 
 		for x := minbbox.x; x <= maxbbox.x; x++ {
 			if (w0 | w1 | w2) >= 0 {
-				zPos := float64(w0)*pts[0].z + float64(w1)*pts[1].z + float64(w2)*pts[2].z
+				sum := float64(w0 + w1 + w2)
+				l0 := float64(w0) / sum
+				l1 := float64(w1) / sum
+				l2 := float64(w2) / sum
+
+				zPos := l0*pts[0].z + l1*pts[1].z + l2*pts[2].z
 				idx := int(x) + (int(y))*scene.width
+
 				if zPos < scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
-					scene.colorBuffer[idx] = color
+					r, g, b := scene.shade(model, triangle, l0, l1, l2)
+					scene.setAt(int(x), int(y), r, g, b)
 				}
 			}
 
@@ -158,9 +68,34 @@ func (scene *Scene) drawTriangle(pts []Vector3, color color.Color) {
 	}
 }
 
-func (scene *Scene) drawModel() {
-	for _, triangle := range scene.models {
-		verts := []Vector3{}
+func (scene *Scene) shade(model *Model, triangle Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
+	p := ponderate(triangle.verts, []float64{l0, l1, l2})
+	normal := ponderate(triangle.normals, []float64{l0, l1, l2})
+	lightNormal := normalize(minus(scene.lightPosition, p))
+	intensity := dotProduct(lightNormal, normal)
+
+	if intensity < 0 {
+		// Shoudln't be needed if there was occulsion culling or shadows ?
+		return 0, 0, 0
+	} else {
+		if true {
+			size := model.texture.Bounds().Size()
+			vert := ponderate(triangle.textures, []float64{l0, l1, l2})
+			c := model.texture.At(int(vert.x*float64(size.X)), int(vert.y*float64(size.Y)))
+			r, g, b, _ := c.RGBA()
+			r /= 256
+			g /= 256
+			b /= 256
+			return uint8(float64(r) * intensity), uint8(float64(g) * intensity), uint8(float64(b) * intensity)
+		} else {
+			return uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255)
+		}
+	}
+}
+
+func (scene *Scene) drawModel(model *Model) {
+	for _, triangle := range model.triangles {
+		verts := make([]Vector3, 0, len(triangle.verts))
 		for _, vert := range triangle.verts {
 			verts = append(verts, Vector3{
 				x: (vert.x + 1.) * scene.fWidth / 2.,
@@ -169,35 +104,28 @@ func (scene *Scene) drawModel() {
 			})
 		}
 
-		lightNormal := normalize(minus(scene.lightPosition, triangle.verts[0]))
-		intensity := dotProduct(lightNormal, triangle.normal) * .8
-		c := color.RGBA{uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255), 255}
-		if intensity < 0 {
-			// Shoudln't be needed if there was occulsion culling or shadows ?
-			c = color.RGBA{0, 0, 0, 0}
-		}
-
-		scene.drawTriangle(verts, c)
+		scene.drawTriangle(model, triangle, verts)
 	}
 }
 
-func (scene *Scene) toImage() *image.RGBA {
-	pix := make([]uint8, scene.width*scene.height*4)
-	for x := 0; x < scene.width; x++ {
-		for yInverted := 0; yInverted < scene.height; yInverted++ {
-			y := scene.height - yInverted - 1
-			colorIdx := x + y*scene.width
-			pixIdx := (x + yInverted*scene.width) * 4
-			r, g, b, _ := scene.colorBuffer[colorIdx].RGBA()
-			pix[pixIdx] = uint8(r)
-			pix[pixIdx+1] = uint8(g)
-			pix[pixIdx+2] = uint8(b)
-			pix[pixIdx+3] = uint8(255)
-		}
+func (scene *Scene) drawModels() {
+	for _, model := range scene.models {
+		scene.drawModel(model)
 	}
+}
 
+func (scene *Scene) setAt(x int, yInverted int, r uint8, g uint8, b uint8) {
+	y := scene.height - yInverted - 1
+	pixIdx := (x + y*scene.width) * 4
+	scene.pixBuffer[pixIdx] = r
+	scene.pixBuffer[pixIdx+1] = g
+	scene.pixBuffer[pixIdx+2] = b
+	scene.pixBuffer[pixIdx+3] = uint8(255)
+}
+
+func (scene *Scene) toImage() *image.RGBA {
 	image := &image.RGBA{
-		Pix:    pix,
+		Pix:    scene.pixBuffer,
 		Stride: scene.width * 4,
 		Rect:   image.Rect(0, 0, scene.width, scene.height),
 	}
@@ -206,10 +134,8 @@ func (scene *Scene) toImage() *image.RGBA {
 }
 
 func (scene *Scene) cleanBuffer() {
-	for x := 0; x < scene.width; x++ {
-		for y := 0; y < scene.height; y++ {
-			scene.colorBuffer[x+y*scene.width] = color.Black
-		}
+	for idx := 0; idx < len(scene.pixBuffer); idx += 4 {
+		scene.pixBuffer[idx+3] = uint8(255)
 	}
 
 	for i := range scene.zBuffer {
@@ -219,7 +145,7 @@ func (scene *Scene) cleanBuffer() {
 
 func (scene *Scene) render() *image.RGBA {
 	scene.cleanBuffer()
-	scene.drawModel()
+	scene.drawModels()
 	return scene.toImage()
 }
 
@@ -231,9 +157,9 @@ func main() {
 	defer wnd.Destroy()
 
 	scene := Scene{
-		models:         []Triangle{},
+		models:         []*Model{},
 		zBuffer:        []float64{},
-		colorBuffer:    []color.Color{},
+		pixBuffer:      []uint8{},
 		width:          cv.Width(),
 		height:         cv.Height(),
 		fWidth:         float64(cv.Width()),
@@ -242,16 +168,16 @@ func main() {
 		cameraPosition: Vector3{0, 0, 0},
 	}
 
-	scene.models = append(scene.models, parseModel("head.obj")...)
-	scene.colorBuffer = make([]color.Color, scene.width*scene.height)
+	scene.models = append(scene.models, parseModel("head.obj", "head.texture.tga"))
+	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
 	scene.zBuffer = make([]float64, scene.width*scene.height)
 
-	f, err := os.Create("cpu")
-	if err != nil {
-		panic(err)
-	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
+	// f, err := os.Create("cpu")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
 
 	t := float64(0)
 	wnd.MainLoop(func() {
@@ -263,6 +189,8 @@ func main() {
 
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
-		fmt.Println(elapsed.String())
+		if false {
+			fmt.Println(elapsed.String())
+		}
 	})
 }
