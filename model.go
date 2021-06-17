@@ -1,48 +1,24 @@
 package main
 
 import (
-	"bufio"
-	"image"
+	"fmt"
 	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 
 	_ "github.com/ftrvxmtrx/tga"
 )
 
-type FastImage struct {
-	height float64
-	width  float64
-	data   []float64
-}
-
 type Model struct {
-	triangles []Triangle
-	texture   *FastImage
+	triangles []*Triangle
+	shader    Shader
 }
 
 type Triangle struct {
-	verts     []Vector3
-	normals   []Vector3
-	uvMapping []Vector3
-}
-
-func decodeTexture(filename string) image.Image {
-	f, err := os.Open("testdata/" + filename)
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer f.Close()
-
-	i, _, err := image.Decode(bufio.NewReader(f))
-	if err != nil {
-		panic(err)
-	}
-
-	return i
+	verts      []Vector3
+	projection []Vector2
+	normals    []Vector3
+	uvMapping  []Vector3
 }
 
 func parseInt(s string) int {
@@ -63,33 +39,7 @@ func parseFloat(s string) float64 {
 	return vertexIdx1
 }
 
-func convertTexture(t image.Image) *FastImage {
-	height := t.Bounds().Max.Y
-	width := t.Bounds().Max.X
-	data := make([]float64, height*width*4)
-
-	idx := 0
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			r, g, b, _ := t.At(x, y).RGBA()
-			data[idx] = float64(r) / 256
-			idx++
-			data[idx] = float64(g) / 256
-			idx++
-			data[idx] = float64(b) / 256
-			idx++
-			idx++
-		}
-	}
-
-	return &FastImage{
-		height: float64(height),
-		width:  float64(width),
-		data:   data,
-	}
-}
-
-func parseModel(objPath string, texturePath string) *Model {
+func parseModel(objPath string, shader Shader) *Model {
 	f, err := ioutil.ReadFile(objPath)
 	if err != nil {
 		panic(err)
@@ -97,7 +47,7 @@ func parseModel(objPath string, texturePath string) *Model {
 
 	str := string(f)
 
-	triangles := []Triangle{}
+	triangles := []*Triangle{}
 	vertex := []Vector3{}
 	normals := []Vector3{}
 	textures := []Vector3{}
@@ -141,25 +91,28 @@ func parseModel(objPath string, texturePath string) *Model {
 			normalIdx2 := parseInt(strings.Split(splitted[2], "/")[2]) - 1
 			normalIdx3 := parseInt(strings.Split(splitted[3], "/")[2]) - 1
 
-			triangles = append(triangles, Triangle{
-				verts:     []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
-				normals:   []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
-				uvMapping: []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
+			triangles = append(triangles, &Triangle{
+				verts:      []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
+				normals:    []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
+				uvMapping:  []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
+				projection: []Vector2{{}, {}, {}},
 			})
 		}
 	}
 
-	tF, err := os.Open(texturePath)
-	if err != nil {
-		panic(err)
-	}
-	texture, _, err := image.Decode(tF)
-	if err != nil {
-		panic(err)
-	}
-
 	return &Model{
 		triangles: triangles,
-		texture:   convertTexture(texture),
+		shader:    shader,
 	}
+}
+
+func (model *Model) move(x float64, y float64, z float64) {
+	for _, triangle := range model.triangles {
+		for _, vert := range triangle.verts {
+			vert.x += x
+			vert.y += y
+			vert.z += z
+		}
+	}
+	fmt.Printf("%+v\n", model.triangles[0])
 }

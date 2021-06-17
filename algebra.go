@@ -4,6 +4,13 @@ import (
 	"math"
 )
 
+type Vector4 struct {
+	x float64
+	y float64
+	z float64
+	w float64
+}
+
 type Vector3 struct {
 	x float64
 	y float64
@@ -15,9 +22,15 @@ type Vector2 struct {
 	y float64
 }
 
-func boundingBox(pts []Vector3) (Vector2, Vector2) {
-	min := Vector2{x: math.Min(pts[0].x, math.Min(pts[1].x, pts[2].x)), y: math.Min(pts[0].y, math.Min(pts[1].y, pts[2].y))}
-	max := Vector2{x: math.Max(pts[0].x, math.Max(pts[1].x, pts[2].x)), y: math.Max(pts[0].y, math.Max(pts[1].y, pts[2].y))}
+func boundingBox(pts []Vector2, minx float64, maxx float64, miny float64, maxy float64) (Vector2, Vector2) {
+	min := Vector2{
+		x: math.Max(minx, math.Min(pts[0].x, math.Min(pts[1].x, pts[2].x))),
+		y: math.Max(miny, math.Min(pts[0].y, math.Min(pts[1].y, pts[2].y))),
+	}
+	max := Vector2{
+		x: math.Min(maxx, math.Max(pts[0].x, math.Max(pts[1].x, pts[2].x))),
+		y: math.Min(maxy, math.Max(pts[0].y, math.Max(pts[1].y, pts[2].y))),
+	}
 	return min, max
 }
 
@@ -61,7 +74,7 @@ func baycentricCoordinates(x float64, y float64, triangle []Vector3) Vector3 {
 	return Vector3{1. - (u.x+u.y)/u.z, u.y / u.z, u.x / u.z}
 }
 
-func orient2d(a Vector3, b Vector3, x float64, y float64) int {
+func orient2d(a Vector2, b Vector2, x float64, y float64) int {
 	return int((b.x-a.x)*(y-a.y) - (b.y-a.y)*(x-a.x))
 }
 

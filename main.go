@@ -18,13 +18,20 @@ type Scene struct {
 	fWidth         float64
 	fHeight        float64
 	lightPosition  Vector3
-	cameraPosition Vector3
+	camera         Camera
 	trianglesDrawn int
 }
 
-func (scene *Scene) drawTriangle(model *Model, triangle Triangle, pts []Vector3) {
+type Camera struct {
+	position    Vector3
+	orientation Vector3
+	display     Vector3
+}
+
+func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	scene.trianglesDrawn++
-	minbbox, maxbbox := boundingBox(pts)
+	pts := triangle.projection
+	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 	A01 := int(pts[0].y - pts[1].y)
 	B01 := int(pts[1].x - pts[0].x)
 	A12 := int(pts[1].y - pts[2].y)
@@ -48,12 +55,13 @@ func (scene *Scene) drawTriangle(model *Model, triangle Triangle, pts []Vector3)
 				l1 := float64(w1) / sum
 				l2 := float64(w2) / sum
 
-				zPos := l0*pts[0].z + l1*pts[1].z + l2*pts[2].z
+				zPos := l0*triangle.verts[0].z + l1*triangle.verts[1].z + l2*triangle.verts[2].z
+				zPos = -zPos // WTF ??
 				idx := int(x) + (int(y))*scene.width
 
 				if zPos < scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
-					r, g, b := scene.shade(model, triangle, l0, l1, l2)
+					r, g, b := model.shader.shade(scene, triangle, l0, l1, l2)
 					scene.setAt(int(x), int(y), r, g, b)
 				}
 			}
@@ -70,43 +78,19 @@ func (scene *Scene) drawTriangle(model *Model, triangle Triangle, pts []Vector3)
 	}
 }
 
-func (scene *Scene) shade(model *Model, triangle Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := ponderate(triangle.verts, []float64{l0, l1, l2})
-	normal := ponderate(triangle.normals, []float64{l0, l1, l2})
-	lightNormal := normalize(minus(scene.lightPosition, p))
-	intensity := dotProduct(lightNormal, normal)
-
-	if intensity < 0 {
-		// Shoudln't be needed if there was occulsion culling or shadows ?
-		return 0, 0, 0
-	} else {
-		if true {
-			vert := ponderate(triangle.uvMapping, []float64{l0, l1, l2})
-			x := int(vert.x * model.texture.width)
-			y := int(vert.y * model.texture.height)
-			idx := (x + y*int(model.texture.width)) * 4
-			r := model.texture.data[idx]
-			g := model.texture.data[idx+1]
-			b := model.texture.data[idx+2]
-			return uint8(float64(r) * intensity), uint8(float64(g) * intensity), uint8(float64(b) * intensity)
-		} else {
-			return uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255)
-		}
+func (scene *Scene) project(triangle *Triangle) {
+	distance := 2.
+	for i, vert := range triangle.verts {
+		denom := 1 - vert.z/distance
+		triangle.projection[i].x = (vert.x/denom + 1.) * scene.fWidth / 2.
+		triangle.projection[i].y = (vert.y/denom + 1.) * scene.fHeight / 2.
 	}
 }
 
 func (scene *Scene) drawModel(model *Model) {
 	for _, triangle := range model.triangles {
-		verts := make([]Vector3, 0, len(triangle.verts))
-		for _, vert := range triangle.verts {
-			verts = append(verts, Vector3{
-				x: (vert.x + 1.) * scene.fWidth / 2.,
-				y: (vert.y + 1.) * scene.fHeight / 2.,
-				z: 0,
-			})
-		}
-
-		scene.drawTriangle(model, triangle, verts)
+		scene.project(triangle)
+		scene.drawTriangle(model, triangle)
 	}
 }
 
@@ -160,18 +144,22 @@ func main() {
 	defer wnd.Destroy()
 
 	scene := Scene{
-		models:         []*Model{},
-		zBuffer:        []float64{},
-		pixBuffer:      []uint8{},
-		width:          cv.Width(),
-		height:         cv.Height(),
-		fWidth:         float64(cv.Width()),
-		fHeight:        float64(cv.Height()),
-		lightPosition:  Vector3{0, 0, -10},
-		cameraPosition: Vector3{0, 0, 0},
+		models:        []*Model{},
+		zBuffer:       []float64{},
+		pixBuffer:     []uint8{},
+		width:         cv.Width(),
+		height:        cv.Height(),
+		fWidth:        float64(cv.Width()),
+		fHeight:       float64(cv.Height()),
+		lightPosition: Vector3{0, 0, -10},
+		camera:        Camera{},
 	}
 
-	scene.models = append(scene.models, parseModel("head.obj", "head.texture.tga"))
+	// model1 := parseModel("test.obj", &IntensityShader{})
+	// scene.models = append(scene.models, model1)
+
+	model2 := parseModel("head.obj", newTextureShader("head.texture.tga"))
+	scene.models = append(scene.models, model2)
 	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
 	scene.zBuffer = make([]float64, scene.width*scene.height)
 
@@ -189,7 +177,7 @@ func main() {
 		t++
 		scene.lightPosition.z = math.Cos(t/10) * 3
 		scene.lightPosition.x = math.Sin(t/10) * 3
-
+		// model1.move(0.1, 0, 0)
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
 		if true {
