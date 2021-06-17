@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"image"
 	"math"
+	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/tfriedel6/canvas/sdlcanvas"
@@ -13,6 +15,8 @@ type Scene struct {
 	models         []*Model
 	zBuffer        []float64
 	pixBuffer      []uint8
+	cleanPixBuffer []uint8
+	cleanZBuffer   []float64
 	width          int
 	height         int
 	fWidth         float64
@@ -30,7 +34,7 @@ type Camera struct {
 
 func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	scene.trianglesDrawn++
-	pts := triangle.projection
+	pts := triangle.screenProjection
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 	A01 := int(pts[0].y - pts[1].y)
 	B01 := int(pts[1].x - pts[0].x)
@@ -59,7 +63,7 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 				zPos = -zPos // WTF ??
 				idx := int(x) + (int(y))*scene.width
 
-				if zPos < scene.zBuffer[idx] {
+				if zPos > 0 && zPos < scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
 					r, g, b := model.shader.shade(scene, triangle, l0, l1, l2)
 					scene.setAt(int(x), int(y), r, g, b)
@@ -82,8 +86,11 @@ func (scene *Scene) project(triangle *Triangle) {
 	distance := 2.
 	for i, vert := range triangle.verts {
 		denom := 1 - vert.z/distance
-		triangle.projection[i].x = (vert.x/denom + 1.) * scene.fWidth / 2.
-		triangle.projection[i].y = (vert.y/denom + 1.) * scene.fHeight / 2.
+		triangle.viewProjection[i].x = vert.x / denom
+		triangle.viewProjection[i].y = vert.y / denom
+		triangle.viewProjection[i].z = vert.z / denom
+		triangle.screenProjection[i].x = (triangle.viewProjection[i].x + 1.) * scene.fWidth / 2.
+		triangle.screenProjection[i].y = (triangle.viewProjection[i].y + 1.) * scene.fHeight / 2.
 	}
 }
 
@@ -120,23 +127,45 @@ func (scene *Scene) toImage() *image.RGBA {
 }
 
 func (scene *Scene) cleanBuffer() {
-	for idx := 0; idx < len(scene.pixBuffer); idx += 4 {
-		scene.pixBuffer[idx] = uint8(0)
-		scene.pixBuffer[idx+1] = uint8(0)
-		scene.pixBuffer[idx+2] = uint8(0)
-		scene.pixBuffer[idx+3] = uint8(255)
-	}
-
-	for i := range scene.zBuffer {
-		scene.zBuffer[i] = 999999
-	}
 	scene.trianglesDrawn = 0
+	copy(scene.pixBuffer[:], scene.cleanPixBuffer[:])
+	copy(scene.zBuffer[:], scene.cleanZBuffer[:])
 }
 
 func (scene *Scene) render() *image.RGBA {
 	scene.cleanBuffer()
 	scene.drawModels()
 	return scene.toImage()
+}
+
+func newScene(width int, height int) *Scene {
+	scene := Scene{
+		models:        []*Model{},
+		zBuffer:       []float64{},
+		pixBuffer:     []uint8{},
+		width:         width,
+		height:        height,
+		fWidth:        float64(width),
+		fHeight:       float64(height),
+		lightPosition: Vector3{2, 2, -3},
+		camera:        Camera{},
+	}
+
+	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
+	scene.cleanPixBuffer = make([]uint8, scene.width*scene.height*4)
+	scene.zBuffer = make([]float64, scene.width*scene.height)
+	scene.cleanZBuffer = make([]float64, scene.width*scene.height)
+	for idx := 0; idx < len(scene.cleanPixBuffer); idx += 4 {
+		scene.cleanPixBuffer[idx] = uint8(0)
+		scene.cleanPixBuffer[idx+1] = uint8(0)
+		scene.cleanPixBuffer[idx+2] = uint8(0)
+		scene.cleanPixBuffer[idx+3] = uint8(255)
+	}
+	for i := range scene.zBuffer {
+		scene.cleanZBuffer[i] = 999999
+	}
+
+	return &scene
 }
 
 func main() {
@@ -146,33 +175,23 @@ func main() {
 	}
 	defer wnd.Destroy()
 
-	scene := Scene{
-		models:        []*Model{},
-		zBuffer:       []float64{},
-		pixBuffer:     []uint8{},
-		width:         cv.Width(),
-		height:        cv.Height(),
-		fWidth:        float64(cv.Width()),
-		fHeight:       float64(cv.Height()),
-		lightPosition: Vector3{0, 1, -10},
-		camera:        Camera{},
+	scene := newScene(cv.Width(), cv.Height())
+	scene.models = append(scene.models, newXZSquare(-1, 0.9, newTextureShader("assets/grass.texture.jpg")).moveZ(-0.7))
+	scene.models = append(scene.models, newXYSquare(-0.9, 0.9, newTextureShader("assets/brick.texture.jpg")))
+	scene.models = append(scene.models, parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveZ(-1))
+
+	if false {
+		f, err := os.Create("cpu")
+		if err != nil {
+			panic(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
 
-	scene.models = append(scene.models, newXZSquare(-0.2, 0.9, newTextureShader("assets/grass.texture.jpg")))
-	scene.models = append(scene.models, newXYSquare(-0.9, 0.9, newTextureShader("assets/brick.texture.jpg")))
-	// scene.models = append(scene.models, parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")))
-
-	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
-	scene.zBuffer = make([]float64, scene.width*scene.height)
-
-	// f, err := os.Create("cpu")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// pprof.StartCPUProfile(f)
-	// defer pprof.StopCPUProfile()
-
+	scene.models[0].moveX(-0.5)
 	t := float64(0)
+
 	wnd.MainLoop(func() {
 		start := time.Now()
 
@@ -180,8 +199,7 @@ func main() {
 		scene.lightPosition.z = math.Cos(t/10) * 3
 		scene.lightPosition.x = math.Sin(t/10) * 3
 
-		scene.models[0].moveX(-0.003)
-
+		scene.models[1].moveX(-0.01)
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
 		if true {

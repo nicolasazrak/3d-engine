@@ -17,17 +17,19 @@ func newXZSquare(y float64, size float64, shader Shader) *Model {
 	text3 := Vector3{x: 0, y: 0.999, z: 0}
 
 	triangle1 := Triangle{
-		verts:      t0,
-		normals:    []Vector3{normal, normal, normal},
-		projection: []Vector2{{}, {}, {}},
-		uvMapping:  []Vector3{text0, text2, text1},
+		verts:            t0,
+		normals:          []Vector3{normal, normal, normal},
+		screenProjection: []Vector2{{}, {}, {}},
+		uvMapping:        []Vector3{text0, text2, text1},
+		viewProjection:   []Vector3{{}, {}, {}},
 	}
 
 	triangle2 := Triangle{
-		verts:      t1,
-		normals:    []Vector3{normal, normal, normal},
-		projection: []Vector2{{}, {}, {}},
-		uvMapping:  []Vector3{text2, text0, text3},
+		verts:            t1,
+		normals:          []Vector3{normal, normal, normal},
+		screenProjection: []Vector2{{}, {}, {}},
+		uvMapping:        []Vector3{text2, text0, text3},
+		viewProjection:   []Vector3{{}, {}, {}},
 	}
 
 	return &Model{
@@ -53,17 +55,19 @@ func newXYSquare(z float64, size float64, shader Shader) *Model {
 	text3 := Vector3{x: 0, y: 0.999, z: 0}
 
 	triangle1 := Triangle{
-		verts:      t0,
-		normals:    []Vector3{normal, normal, normal},
-		projection: []Vector2{{}, {}, {}},
-		uvMapping:  []Vector3{text0, text1, text2},
+		verts:            t0,
+		normals:          []Vector3{normal, normal, normal},
+		screenProjection: []Vector2{{}, {}, {}},
+		uvMapping:        []Vector3{text0, text1, text2},
+		viewProjection:   []Vector3{{}, {}, {}},
 	}
 
 	triangle2 := Triangle{
-		verts:      t1,
-		normals:    []Vector3{normal, normal, normal},
-		projection: []Vector2{{}, {}, {}},
-		uvMapping:  []Vector3{text2, text3, text0},
+		verts:            t1,
+		normals:          []Vector3{normal, normal, normal},
+		screenProjection: []Vector2{{}, {}, {}},
+		uvMapping:        []Vector3{text2, text3, text0},
+		viewProjection:   []Vector3{{}, {}, {}},
 	}
 
 	return &Model{

@@ -14,10 +14,11 @@ type Model struct {
 }
 
 type Triangle struct {
-	verts      []Vector3
-	projection []Vector2
-	normals    []Vector3
-	uvMapping  []Vector3
+	verts            []Vector3
+	viewProjection   []Vector3
+	screenProjection []Vector2
+	normals          []Vector3
+	uvMapping        []Vector3
 }
 
 func parseInt(s string) int {
@@ -91,10 +92,11 @@ func parseModel(objPath string, shader Shader) *Model {
 			normalIdx3 := parseInt(strings.Split(splitted[3], "/")[2]) - 1
 
 			triangles = append(triangles, &Triangle{
-				verts:      []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
-				normals:    []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
-				uvMapping:  []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
-				projection: []Vector2{{}, {}, {}},
+				verts:            []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
+				normals:          []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
+				uvMapping:        []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
+				screenProjection: []Vector2{{}, {}, {}},
+				viewProjection:   []Vector3{{}, {}, {}},
 			})
 		}
 	}
@@ -105,26 +107,29 @@ func parseModel(objPath string, shader Shader) *Model {
 	}
 }
 
-func (model *Model) moveX(x float64) {
+func (model *Model) moveX(x float64) *Model {
 	for _, triangle := range model.triangles {
 		for i := range triangle.verts {
 			triangle.verts[i].x += x
 		}
 	}
+	return model
 }
 
-func (model *Model) moveY(y float64) {
+func (model *Model) moveY(y float64) *Model {
 	for _, triangle := range model.triangles {
 		for i := range triangle.verts {
 			triangle.verts[i].y += y
 		}
 	}
+	return model
 }
 
-func (model *Model) moveZ(z float64) {
+func (model *Model) moveZ(z float64) *Model {
 	for _, triangle := range model.triangles {
 		for i := range triangle.verts {
 			triangle.verts[i].z += z
 		}
 	}
+	return model
 }
