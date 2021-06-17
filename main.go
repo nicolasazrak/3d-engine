@@ -19,9 +19,11 @@ type Scene struct {
 	fHeight        float64
 	lightPosition  Vector3
 	cameraPosition Vector3
+	trianglesDrawn int
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle Triangle, pts []Vector3) {
+	scene.trianglesDrawn++
 	minbbox, maxbbox := boundingBox(pts)
 	A01 := int(pts[0].y - pts[1].y)
 	B01 := int(pts[1].x - pts[0].x)
@@ -79,13 +81,13 @@ func (scene *Scene) shade(model *Model, triangle Triangle, l0 float64, l1 float6
 		return 0, 0, 0
 	} else {
 		if true {
-			size := model.texture.Bounds().Size()
-			vert := ponderate(triangle.textures, []float64{l0, l1, l2})
-			c := model.texture.At(int(vert.x*float64(size.X)), int(vert.y*float64(size.Y)))
-			r, g, b, _ := c.RGBA()
-			r /= 256
-			g /= 256
-			b /= 256
+			vert := ponderate(triangle.uvMapping, []float64{l0, l1, l2})
+			x := int(vert.x * model.texture.width)
+			y := int(vert.y * model.texture.height)
+			idx := (x + y*int(model.texture.width)) * 4
+			r := model.texture.data[idx]
+			g := model.texture.data[idx+1]
+			b := model.texture.data[idx+2]
 			return uint8(float64(r) * intensity), uint8(float64(g) * intensity), uint8(float64(b) * intensity)
 		} else {
 			return uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255)
@@ -141,6 +143,7 @@ func (scene *Scene) cleanBuffer() {
 	for i := range scene.zBuffer {
 		scene.zBuffer[i] = 999999
 	}
+	scene.trianglesDrawn = 0
 }
 
 func (scene *Scene) render() *image.RGBA {
@@ -189,8 +192,8 @@ func main() {
 
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
-		if false {
-			fmt.Println(elapsed.String())
+		if true {
+			fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
 		}
 	})
 }
