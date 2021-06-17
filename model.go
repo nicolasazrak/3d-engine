@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
@@ -106,13 +105,26 @@ func parseModel(objPath string, shader Shader) *Model {
 	}
 }
 
-func (model *Model) move(x float64, y float64, z float64) {
+func (model *Model) moveX(x float64) {
 	for _, triangle := range model.triangles {
-		for _, vert := range triangle.verts {
-			vert.x += x
-			vert.y += y
-			vert.z += z
+		for i := range triangle.verts {
+			triangle.verts[i].x += x
 		}
 	}
-	fmt.Printf("%+v\n", model.triangles[0])
+}
+
+func (model *Model) moveY(y float64) {
+	for _, triangle := range model.triangles {
+		for i := range triangle.verts {
+			triangle.verts[i].y += y
+		}
+	}
+}
+
+func (model *Model) moveZ(z float64) {
+	for _, triangle := range model.triangles {
+		for i := range triangle.verts {
+			triangle.verts[i].z += z
+		}
+	}
 }

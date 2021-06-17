@@ -121,6 +121,9 @@ func (scene *Scene) toImage() *image.RGBA {
 
 func (scene *Scene) cleanBuffer() {
 	for idx := 0; idx < len(scene.pixBuffer); idx += 4 {
+		scene.pixBuffer[idx] = uint8(0)
+		scene.pixBuffer[idx+1] = uint8(0)
+		scene.pixBuffer[idx+2] = uint8(0)
 		scene.pixBuffer[idx+3] = uint8(255)
 	}
 
@@ -151,15 +154,14 @@ func main() {
 		height:        cv.Height(),
 		fWidth:        float64(cv.Width()),
 		fHeight:       float64(cv.Height()),
-		lightPosition: Vector3{0, 0, -10},
+		lightPosition: Vector3{0, 1, -10},
 		camera:        Camera{},
 	}
 
-	// model1 := parseModel("test.obj", &IntensityShader{})
-	// scene.models = append(scene.models, model1)
+	scene.models = append(scene.models, newXZSquare(-0.2, 0.9, newTextureShader("assets/grass.texture.jpg")))
+	scene.models = append(scene.models, newXYSquare(-0.9, 0.9, newTextureShader("assets/brick.texture.jpg")))
+	// scene.models = append(scene.models, parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")))
 
-	model2 := parseModel("head.obj", newTextureShader("head.texture.tga"))
-	scene.models = append(scene.models, model2)
 	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
 	scene.zBuffer = make([]float64, scene.width*scene.height)
 
@@ -177,7 +179,9 @@ func main() {
 		t++
 		scene.lightPosition.z = math.Cos(t/10) * 3
 		scene.lightPosition.x = math.Sin(t/10) * 3
-		// model1.move(0.1, 0, 0)
+
+		scene.models[0].moveX(-0.003)
+
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
 		if true {

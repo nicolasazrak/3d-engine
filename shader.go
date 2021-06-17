@@ -106,10 +106,13 @@ func (intensity *IntensityShader) shade(scene *Scene, triangle *Triangle, l0 flo
 	return uint8(l0 * 255), uint8(l1 * 255), uint8(l2 * 255)
 }
 
-type GrayScaleShader struct {
+type SmoothColorShader struct {
+	r float64
+	g float64
+	b float64
 }
 
-func (grayScaleShader *GrayScaleShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
+func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
 	p := ponderate(triangle.verts, []float64{l0, l1, l2})
 	normal := ponderate(triangle.normals, []float64{l0, l1, l2})
 	lightNormal := normalize(minus(scene.lightPosition, p))
@@ -119,7 +122,7 @@ func (grayScaleShader *GrayScaleShader) shade(scene *Scene, triangle *Triangle, 
 		// Shoudln't be needed if there was occulsion culling or shadows ?
 		return 0, 0, 0
 	} else {
-		return uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255)
+		return uint8(intensity * smoothColor.r), uint8(intensity * smoothColor.g), uint8(intensity * smoothColor.b)
 	}
 }
 
