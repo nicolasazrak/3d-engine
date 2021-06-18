@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"image"
-	"math"
 	"os"
 )
 
@@ -80,8 +79,8 @@ type TextureShader struct {
 }
 
 func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := ponderate(triangle.viewVerts, []float64{l0, l1, l2})
-	normal := ponderate(triangle.viewNormals, []float64{l0, l1, l2})
+	p := ponderate(triangle.cameraVerts, []float64{l0, l1, l2})
+	normal := ponderate(triangle.cameraNormals, []float64{l0, l1, l2})
 	lightNormal := normalize(minus(scene.projectedLight, p))
 	intensity := dotProduct(lightNormal, normal)
 
@@ -100,6 +99,17 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, l0 f
 	}
 }
 
+type LineShader struct {
+}
+
+func (shader *LineShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
+	if l0 < 0.001 || l1 < 0.001 || l2 < 0.001 {
+		return uint8(l0 * 255), uint8(l1 * 255), uint8(l2 * 255)
+	} else {
+		return 0, 0, 0
+	}
+}
+
 type IntensityShader struct {
 }
 
@@ -114,11 +124,10 @@ type SmoothColorShader struct {
 }
 
 func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := ponderate(triangle.viewVerts, []float64{l0, l1, l2})
-	normal := ponderate(triangle.viewNormals, []float64{l0, l1, l2})
+	p := ponderate(triangle.cameraVerts, []float64{l0, l1, l2})
+	normal := ponderate(triangle.cameraNormals, []float64{l0, l1, l2})
 	lightNormal := normalize(minus(scene.projectedLight, p))
-	distance := 1 / math.Sqrt(norm(minus(p, scene.projectedLight)))
-	intensity := dotProduct(lightNormal, normal) * distance
+	intensity := dotProduct(lightNormal, normal)
 
 	if intensity < 0 {
 		// Shoudln't be needed if there was occulsion culling or shadows ?
@@ -132,8 +141,8 @@ type FlatGrayScaleShader struct {
 }
 
 func (flatGrayScaleShader *FlatGrayScaleShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := triangle.viewVerts[0]
-	normal := triangle.viewNormals[0]
+	p := triangle.cameraVerts[0]
+	normal := triangle.cameraNormals[0]
 	lightNormal := normalize(minus(scene.projectedLight, p))
 	intensity := dotProduct(lightNormal, normal)
 

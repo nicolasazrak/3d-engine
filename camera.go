@@ -14,7 +14,8 @@ type Camera struct {
 
 func newCamera() *Camera {
 	return &Camera{
-		position:     Vector3{0, 0, 1},
+		position:     Vector3{0, 0, 3},
+		target:       Vector3{0, 0, 0},
 		angle:        0,
 		viewMatrix:   [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 		normalMatrix: [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
@@ -61,16 +62,18 @@ func (cam *Camera) project(scene *Scene) {
 		for _, triangle := range model.triangles {
 			for i, vert := range triangle.verts {
 				res := matmult(cam.viewMatrix, vert, 1)
-				triangle.viewVerts[i].x = res.x
-				triangle.viewVerts[i].y = res.y
-				triangle.viewVerts[i].z = res.z
+				triangle.cameraVerts[i].x = res.x
+				triangle.cameraVerts[i].y = res.y
+				triangle.cameraVerts[i].z = res.z
 
-				triangle.screenProjection[i].x = (triangle.viewVerts[i].x/-res.z + 1.) * scene.fWidth / 2.
-				triangle.screenProjection[i].y = (triangle.viewVerts[i].y/-res.z + 1.) * scene.fHeight / 2.
+				triangle.viewportVerts[i].x = (triangle.cameraVerts[i].x/-res.z + 1.) * scene.fWidth / 2.
+				triangle.viewportVerts[i].y = (triangle.cameraVerts[i].y/-res.z + 1.) * scene.fHeight / 2.
+
+				// fmt.Println(triangle.viewVerts[i])
 			}
 
 			for i, normal := range triangle.normals {
-				triangle.viewNormals[i] = normalize(matmult(cam.normalMatrix, normal, 0))
+				triangle.cameraNormals[i] = normalize(matmult(cam.normalMatrix, normal, 0))
 			}
 		}
 	}

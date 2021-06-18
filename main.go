@@ -27,13 +27,16 @@ type Scene struct {
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
-	if triangle.viewVerts[0].z > 0 && triangle.viewVerts[1].z > 0 && triangle.viewVerts[2].z > 0 {
+	if triangle.cameraVerts[0].z > 0 && triangle.cameraVerts[1].z > 0 && triangle.cameraVerts[2].z > 0 {
 		return
 	}
 
+	farPlane := 8.
+	nearPlane := 2.
 	scene.trianglesDrawn++
-	pts := triangle.screenProjection
+	pts := triangle.viewportVerts
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
+
 	A01 := int(pts[0].y - pts[1].y)
 	B01 := int(pts[1].x - pts[0].x)
 	A12 := int(pts[1].y - pts[2].y)
@@ -61,15 +64,12 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 				l1 := float64(w1) / sum
 				l2 := float64(w2) / sum
 
-				zPos := l0*triangle.viewVerts[0].z + l1*triangle.viewVerts[1].z + l2*triangle.viewVerts[2].z
+				zPos := l0*triangle.cameraVerts[0].z + l1*triangle.cameraVerts[1].z + l2*triangle.cameraVerts[2].z
 				zPos = -zPos // WTF ??
 				idx := int(x) + (int(y))*scene.width
 
-				if zPos > 0 && zPos < scene.zBuffer[idx] {
+				if zPos < farPlane && zPos > nearPlane && zPos < scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
-					if l0 <= -0 && l1 <= -0 && l2 <= -0 {
-						fmt.Println("w0, w1, w2", w0, w1, w2, sum, l0, l1, l2, pts, x, y)
-					}
 					r, g, b := model.shader.shade(scene, triangle, l0, l1, l2)
 					scene.setAt(int(x), int(y), r, g, b)
 				}
@@ -139,7 +139,7 @@ func newScene(width int, height int) *Scene {
 		height:        height,
 		fWidth:        float64(width),
 		fHeight:       float64(height),
-		lightPosition: Vector3{2, 2, -1.5},
+		lightPosition: Vector3{2, 2, 1.5},
 		camera:        newCamera(),
 	}
 
@@ -183,6 +183,7 @@ func main2() {
 	// 	newXZSquare(2, &IntensityShader{}).moveY(-1),
 	// )
 	scene.models = append(scene.models,
+		// newXZSquare(4, &LineShader{}).moveY(-2),
 		newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
 	)
 	scene.models = append(scene.models,
@@ -190,9 +191,9 @@ func main2() {
 		// newXYSquare(4, &SmoothColorShader{255, 255, 255}).moveZ(-2),
 		newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
 	)
-	// scene.models = append(scene.models,
-	// 	parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveY(-0.1).moveZ(-0.5),
-	// )
+	scene.models = append(scene.models,
+		parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveY(-0.1).moveZ(-0.5),
+	)
 
 	if false {
 		f, err := os.Create("cpu")

@@ -14,12 +14,12 @@ type Model struct {
 }
 
 type Triangle struct {
-	verts            []Vector3
-	viewVerts        []Vector3
-	normals          []Vector3
-	viewNormals      []Vector3
-	screenProjection []Vector2
-	uvMapping        []Vector3
+	verts         []Vector3
+	cameraVerts   []Vector3
+	viewportVerts []Vector2
+	normals       []Vector3
+	cameraNormals []Vector3
+	uvMapping     []Vector3
 }
 
 func parseInt(s string) int {
@@ -93,12 +93,12 @@ func parseModel(objPath string, shader Shader) *Model {
 			normalIdx3 := parseInt(strings.Split(splitted[3], "/")[2]) - 1
 
 			triangles = append(triangles, &Triangle{
-				verts:            []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
-				normals:          []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
-				uvMapping:        []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
-				screenProjection: []Vector2{{}, {}, {}},
-				viewVerts:        []Vector3{{}, {}, {}},
-				viewNormals:      []Vector3{{}, {}, {}},
+				verts:         []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
+				normals:       []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
+				uvMapping:     []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
+				viewportVerts: []Vector2{{}, {}, {}},
+				cameraVerts:   []Vector3{{}, {}, {}},
+				cameraNormals: []Vector3{{}, {}, {}},
 			})
 		}
 	}
