@@ -88,7 +88,6 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 }
 
 func (scene *Scene) drawModel(model *Model) {
-	scene.camera.project(scene, model.triangles)
 	for _, triangle := range model.triangles {
 		scene.drawTriangle(model, triangle)
 	}
@@ -140,7 +139,7 @@ func newScene(width int, height int) *Scene {
 		height:        height,
 		fWidth:        float64(width),
 		fHeight:       float64(height),
-		lightPosition: Vector3{10, 0, 4},
+		lightPosition: Vector3{2, 2, -1.5},
 		camera:        newCamera(),
 	}
 
@@ -162,21 +161,17 @@ func newScene(width int, height int) *Scene {
 }
 
 func main() {
-	// 	scene := newScene(1000, 1000)
+	main2()
+	// scene := newScene(100, 100)
+	// scene.camera.position = Vector3{2, 0, 0}
+	// scene.camera.target = Vector3{0, 0, 0}
+	// scene.camera.updateViewMatrix()
 
-	// 	v0 := Vector3{x: 1, y: 2, z: 0}
+	// // fmt.Println(matmult(scene.camera.viewMatrix, Vector3{0, 0, 0}, 1))
+	// fmt.Println(normalize(matmult(scene.camera.normalMatrix, normalize(Vector3{0, 0, 1}), 0))) // should be {0,0,1}
+}
 
-	// 	triangle1 := Triangle{
-	// 		verts:            []Vector3{v0},
-	// 		normals:          []Vector3{v0},
-	// 		screenProjection: []Vector2{{}, {}, {}},
-	// 		viewProjection:   []Vector3{{}, {}, {}},
-	// 	}
-
-	// 	scene.camera.project(scene, []*Triangle{&triangle1})
-	// }
-
-	// func main2() {
+func main2() {
 	wnd, cv, err := sdlcanvas.CreateWindow(1000, 1000, "Hello")
 	if err != nil {
 		panic(err)
@@ -192,6 +187,7 @@ func main() {
 	)
 	scene.models = append(scene.models,
 		// newXYSquare(4, &IntensityShader{}).moveZ(-2),
+		// newXYSquare(4, &SmoothColorShader{255, 255, 255}).moveZ(-2),
 		newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
 	)
 	// scene.models = append(scene.models,
@@ -209,6 +205,8 @@ func main() {
 
 	t := float64(0)
 
+	scene.camera.project(scene)
+
 	wnd.KeyDown = func(scancode int, rn rune, name string) {
 		if name == "KeyD" {
 			scene.camera.position.x += 0.1
@@ -222,7 +220,7 @@ func main() {
 		if name == "KeyS" {
 			scene.camera.position.z += 0.1
 		}
-
+		scene.camera.project(scene)
 	}
 
 	wnd.MainLoop(func() {
