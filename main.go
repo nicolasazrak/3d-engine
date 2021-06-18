@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"math"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 type Scene struct {
 	models         []*Model
+	scaleFactor    int
 	zBuffer        []float64
 	pixBuffer      []uint8
 	cleanPixBuffer []uint8
@@ -31,8 +33,8 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 		return
 	}
 
-	farPlane := 8.
-	nearPlane := 2.
+	farPlane := 20.
+	nearPlane := .1
 	scene.trianglesDrawn++
 	pts := triangle.viewportVerts
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
@@ -100,19 +102,27 @@ func (scene *Scene) drawModels() {
 }
 
 func (scene *Scene) setAt(x int, yInverted int, r uint8, g uint8, b uint8) {
-	y := scene.height - yInverted - 1
-	pixIdx := (x + y*scene.width) * 4
-	scene.pixBuffer[pixIdx] = r
-	scene.pixBuffer[pixIdx+1] = g
-	scene.pixBuffer[pixIdx+2] = b
-	scene.pixBuffer[pixIdx+3] = uint8(255)
+	for xScale := 0; xScale < scene.scaleFactor; xScale++ {
+		for yScale := 0; yScale < scene.scaleFactor; yScale++ {
+			y := scene.height - yInverted - 1
+
+			finalX := x*scene.scaleFactor + xScale
+			finalY := y*scene.scaleFactor + yScale
+
+			pixIdx := (finalX + finalY*scene.width*scene.scaleFactor) * 4
+			scene.pixBuffer[pixIdx] = r
+			scene.pixBuffer[pixIdx+1] = g
+			scene.pixBuffer[pixIdx+2] = b
+			scene.pixBuffer[pixIdx+3] = uint8(255)
+		}
+	}
 }
 
 func (scene *Scene) toImage() *image.RGBA {
 	image := &image.RGBA{
 		Pix:    scene.pixBuffer,
-		Stride: scene.width * 4,
-		Rect:   image.Rect(0, 0, scene.width, scene.height),
+		Stride: scene.width * 4 * scene.scaleFactor,
+		Rect:   image.Rect(0, 0, scene.width*scene.scaleFactor, scene.height*scene.scaleFactor),
 	}
 
 	return image
@@ -130,21 +140,22 @@ func (scene *Scene) render() *image.RGBA {
 	return scene.toImage()
 }
 
-func newScene(width int, height int) *Scene {
+func newScene(width int, height int, scaleFactor int) *Scene {
 	scene := Scene{
 		models:        []*Model{},
 		zBuffer:       []float64{},
 		pixBuffer:     []uint8{},
-		width:         width,
-		height:        height,
-		fWidth:        float64(width),
-		fHeight:       float64(height),
+		scaleFactor:   scaleFactor,
+		width:         width / scaleFactor,
+		height:        height / scaleFactor,
+		fWidth:        float64(width / scaleFactor),
+		fHeight:       float64(height / scaleFactor),
 		lightPosition: Vector3{2, 2, 1.5},
 		camera:        newCamera(),
 	}
 
-	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
-	scene.cleanPixBuffer = make([]uint8, scene.width*scene.height*4)
+	scene.pixBuffer = make([]uint8, scene.width*scene.height*4*scene.scaleFactor*scaleFactor)
+	scene.cleanPixBuffer = make([]uint8, scene.width*scene.height*4*scene.scaleFactor*scaleFactor)
 	scene.zBuffer = make([]float64, scene.width*scene.height)
 	scene.cleanZBuffer = make([]float64, scene.width*scene.height)
 	for idx := 0; idx < len(scene.cleanPixBuffer); idx += 4 {
@@ -178,19 +189,19 @@ func main2() {
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height())
+	scene := newScene(cv.Width(), cv.Height(), 2)
 	// scene.models = append(scene.models,
 	// 	newXZSquare(2, &IntensityShader{}).moveY(-1),
 	// )
-	scene.models = append(scene.models,
-		// newXZSquare(4, &LineShader{}).moveY(-2),
-		newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
-	)
-	scene.models = append(scene.models,
-		// newXYSquare(4, &IntensityShader{}).moveZ(-2),
-		// newXYSquare(4, &SmoothColorShader{255, 255, 255}).moveZ(-2),
-		newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
-	)
+	// scene.models = append(scene.models,
+	// 	// newXZSquare(4, &LineShader{}).moveY(-2),
+	// 	newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
+	// )
+	// scene.models = append(scene.models,
+	// 	// newXYSquare(4, &IntensityShader{}).moveZ(-2),
+	// 	// newXYSquare(4, &SmoothColorShader{255, 255, 255}).moveZ(-2),
+	// 	newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
+	// )
 	scene.models = append(scene.models,
 		parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveY(-0.1).moveZ(-0.5),
 	)
@@ -221,17 +232,18 @@ func main2() {
 		if name == "KeyS" {
 			scene.camera.position.z += 0.1
 		}
-		scene.camera.project(scene)
+
 	}
 
 	wnd.MainLoop(func() {
 		start := time.Now()
 		t++
-		// scene.lightPosition.z = math.Cos(t/10) * 3
-		// scene.lightPosition.x = math.Sin(t/10) * 3
+		scene.lightPosition.z = math.Cos(t/10) * 3
+		scene.lightPosition.x = math.Sin(t/10) * 3
+		scene.camera.project(scene)
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
-		if false {
+		if true {
 			fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
 		}
 	})
