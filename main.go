@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"image"
-	"math"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -22,17 +21,16 @@ type Scene struct {
 	fWidth         float64
 	fHeight        float64
 	lightPosition  Vector3
-	camera         Camera
+	projectedLight Vector3
+	camera         *Camera
 	trianglesDrawn int
 }
 
-type Camera struct {
-	position    Vector3
-	orientation Vector3
-	display     Vector3
-}
-
 func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
+	if triangle.viewVerts[0].z > 0 && triangle.viewVerts[1].z > 0 && triangle.viewVerts[2].z > 0 {
+		return
+	}
+
 	scene.trianglesDrawn++
 	pts := triangle.screenProjection
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
@@ -55,16 +53,23 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 		for x := minbbox.x; x <= maxbbox.x; x++ {
 			if (w0 | w1 | w2) >= 0 {
 				sum := float64(w0 + w1 + w2)
+				if sum <= -0 {
+					// TODO fix this
+					continue
+				}
 				l0 := float64(w0) / sum
 				l1 := float64(w1) / sum
 				l2 := float64(w2) / sum
 
-				zPos := l0*triangle.verts[0].z + l1*triangle.verts[1].z + l2*triangle.verts[2].z
+				zPos := l0*triangle.viewVerts[0].z + l1*triangle.viewVerts[1].z + l2*triangle.viewVerts[2].z
 				zPos = -zPos // WTF ??
 				idx := int(x) + (int(y))*scene.width
 
 				if zPos > 0 && zPos < scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
+					if l0 <= -0 && l1 <= -0 && l2 <= -0 {
+						fmt.Println("w0, w1, w2", w0, w1, w2, sum, l0, l1, l2, pts, x, y)
+					}
 					r, g, b := model.shader.shade(scene, triangle, l0, l1, l2)
 					scene.setAt(int(x), int(y), r, g, b)
 				}
@@ -82,21 +87,9 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	}
 }
 
-func (scene *Scene) project(triangle *Triangle) {
-	distance := 2.
-	for i, vert := range triangle.verts {
-		denom := 1 - vert.z/distance
-		triangle.viewProjection[i].x = vert.x / denom
-		triangle.viewProjection[i].y = vert.y / denom
-		triangle.viewProjection[i].z = vert.z / denom
-		triangle.screenProjection[i].x = (triangle.viewProjection[i].x + 1.) * scene.fWidth / 2.
-		triangle.screenProjection[i].y = (triangle.viewProjection[i].y + 1.) * scene.fHeight / 2.
-	}
-}
-
 func (scene *Scene) drawModel(model *Model) {
+	scene.camera.project(scene, model.triangles)
 	for _, triangle := range model.triangles {
-		scene.project(triangle)
 		scene.drawTriangle(model, triangle)
 	}
 }
@@ -147,8 +140,8 @@ func newScene(width int, height int) *Scene {
 		height:        height,
 		fWidth:        float64(width),
 		fHeight:       float64(height),
-		lightPosition: Vector3{2, 2, -3},
-		camera:        Camera{},
+		lightPosition: Vector3{10, 0, 4},
+		camera:        newCamera(),
 	}
 
 	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
@@ -169,6 +162,21 @@ func newScene(width int, height int) *Scene {
 }
 
 func main() {
+	// 	scene := newScene(1000, 1000)
+
+	// 	v0 := Vector3{x: 1, y: 2, z: 0}
+
+	// 	triangle1 := Triangle{
+	// 		verts:            []Vector3{v0},
+	// 		normals:          []Vector3{v0},
+	// 		screenProjection: []Vector2{{}, {}, {}},
+	// 		viewProjection:   []Vector3{{}, {}, {}},
+	// 	}
+
+	// 	scene.camera.project(scene, []*Triangle{&triangle1})
+	// }
+
+	// func main2() {
 	wnd, cv, err := sdlcanvas.CreateWindow(1000, 1000, "Hello")
 	if err != nil {
 		panic(err)
@@ -176,9 +184,19 @@ func main() {
 	defer wnd.Destroy()
 
 	scene := newScene(cv.Width(), cv.Height())
-	scene.models = append(scene.models, newXZSquare(-1, 0.9, newTextureShader("assets/grass.texture.jpg")).moveZ(-0.7))
-	scene.models = append(scene.models, newXYSquare(-0.9, 0.9, newTextureShader("assets/brick.texture.jpg")))
-	scene.models = append(scene.models, parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveZ(-1))
+	// scene.models = append(scene.models,
+	// 	newXZSquare(2, &IntensityShader{}).moveY(-1),
+	// )
+	scene.models = append(scene.models,
+		newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
+	)
+	scene.models = append(scene.models,
+		// newXYSquare(4, &IntensityShader{}).moveZ(-2),
+		newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
+	)
+	// scene.models = append(scene.models,
+	// 	parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveY(-0.1).moveZ(-0.5),
+	// )
 
 	if false {
 		f, err := os.Create("cpu")
@@ -189,20 +207,32 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	scene.models[0].moveX(-0.5)
 	t := float64(0)
+
+	wnd.KeyDown = func(scancode int, rn rune, name string) {
+		if name == "KeyD" {
+			scene.camera.position.x += 0.1
+		}
+		if name == "KeyA" {
+			scene.camera.position.x -= 0.1
+		}
+		if name == "KeyW" {
+			scene.camera.position.z -= 0.1
+		}
+		if name == "KeyS" {
+			scene.camera.position.z += 0.1
+		}
+
+	}
 
 	wnd.MainLoop(func() {
 		start := time.Now()
-
 		t++
-		scene.lightPosition.z = math.Cos(t/10) * 3
-		scene.lightPosition.x = math.Sin(t/10) * 3
-
-		scene.models[1].moveX(-0.01)
+		// scene.lightPosition.z = math.Cos(t/10) * 3
+		// scene.lightPosition.x = math.Sin(t/10) * 3
 		cv.PutImageData(scene.render(), 0, 0)
 		elapsed := time.Since(start)
-		if true {
+		if false {
 			fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
 		}
 	})

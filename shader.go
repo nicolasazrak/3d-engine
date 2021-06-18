@@ -79,9 +79,9 @@ type TextureShader struct {
 }
 
 func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := ponderate(triangle.verts, []float64{l0, l1, l2})
+	p := ponderate(triangle.viewVerts, []float64{l0, l1, l2})
 	normal := ponderate(triangle.normals, []float64{l0, l1, l2})
-	lightNormal := normalize(minus(scene.lightPosition, p))
+	lightNormal := normalize(minus(scene.projectedLight, p))
 	intensity := dotProduct(lightNormal, normal)
 
 	if intensity < 0 {
@@ -113,9 +113,9 @@ type SmoothColorShader struct {
 }
 
 func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := ponderate(triangle.verts, []float64{l0, l1, l2})
+	p := ponderate(triangle.viewVerts, []float64{l0, l1, l2})
 	normal := ponderate(triangle.normals, []float64{l0, l1, l2})
-	lightNormal := normalize(minus(scene.lightPosition, p))
+	lightNormal := normalize(minus(scene.projectedLight, p))
 	intensity := dotProduct(lightNormal, normal)
 
 	if intensity < 0 {
@@ -130,9 +130,9 @@ type FlatGrayScaleShader struct {
 }
 
 func (flatGrayScaleShader *FlatGrayScaleShader) shade(scene *Scene, triangle *Triangle, l0 float64, l1 float64, l2 float64) (uint8, uint8, uint8) {
-	p := triangle.verts[0]
+	p := triangle.viewVerts[0]
 	normal := triangle.normals[0]
-	lightNormal := normalize(minus(scene.lightPosition, p))
+	lightNormal := normalize(minus(scene.projectedLight, p))
 	intensity := dotProduct(lightNormal, normal)
 
 	if intensity < 0 {

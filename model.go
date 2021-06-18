@@ -15,9 +15,10 @@ type Model struct {
 
 type Triangle struct {
 	verts            []Vector3
-	viewProjection   []Vector3
-	screenProjection []Vector2
+	viewVerts        []Vector3
 	normals          []Vector3
+	viewNormals      []Vector3
+	screenProjection []Vector2
 	uvMapping        []Vector3
 }
 
@@ -96,7 +97,8 @@ func parseModel(objPath string, shader Shader) *Model {
 				normals:          []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
 				uvMapping:        []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
 				screenProjection: []Vector2{{}, {}, {}},
-				viewProjection:   []Vector3{{}, {}, {}},
+				viewVerts:        []Vector3{{}, {}, {}},
+				viewNormals:      []Vector3{{}, {}, {}},
 			})
 		}
 	}
