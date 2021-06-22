@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"math"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -61,9 +62,10 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 					// TODO fix this
 					continue
 				}
-				l0 := float64(w0) / sum
-				l1 := float64(w1) / sum
-				l2 := float64(w2) / sum
+				d := 1 / sum
+				l0 := float64(w0) * d
+				l1 := float64(w1) * d
+				l2 := float64(w2) * d
 
 				zPos := l0*triangle.cameraVerts[0].z + l1*triangle.cameraVerts[1].z + l2*triangle.cameraVerts[2].z
 				zPos = -zPos // WTF ??
@@ -134,6 +136,7 @@ func (scene *Scene) cleanBuffer() {
 }
 
 func (scene *Scene) render() *image.RGBA {
+	scene.camera.project(scene)
 	scene.cleanBuffer()
 	scene.drawModels()
 	return scene.toImage()
@@ -172,13 +175,6 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 
 func main() {
 	main2()
-	// scene := newScene(100, 100)
-	// scene.camera.position = Vector3{2, 0, 0}
-	// scene.camera.target = Vector3{0, 0, 0}
-	// scene.camera.updateViewMatrix()
-
-	// // fmt.Println(matmult(scene.camera.viewMatrix, Vector3{0, 0, 0}, 1))
-	// fmt.Println(normalize(matmult(scene.camera.normalMatrix, normalize(Vector3{0, 0, 1}), 0))) // should be {0,0,1}
 }
 
 func main2() {
@@ -192,18 +188,18 @@ func main2() {
 	// scene.models = append(scene.models,
 	// 	newXZSquare(2, &IntensityShader{}).moveY(-1),
 	// )
-	scene.models = append(scene.models,
-		// newXZSquare(4, &LineShader{}).moveY(-2),
-		newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
-	)
+	// scene.models = append(scene.models,
+	// 	// newXZSquare(4, &LineShader{}).moveY(-2),
+	// 	newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
+	// )
 	scene.models = append(scene.models,
 		// newXYSquare(4, &IntensityShader{}).moveZ(-2),
 		// newXYSquare(4, &SmoothColorShader{255, 255, 255}).moveZ(-2),
-		newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
+		newXYSquare(4, newBilinearTextureShader("assets/brick.texture.jpg")).moveZ(-2),
 	)
-	// scene.models = append(scene.models,
-	// 	parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveY(-0.1).moveZ(-0.5),
-	// )
+	scene.models = append(scene.models,
+		parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")).moveY(-0.1).moveZ(-0.5),
+	)
 
 	if false {
 		f, err := os.Create("cpu")
@@ -214,42 +210,49 @@ func main2() {
 		defer pprof.StopCPUProfile()
 	}
 
-	t := float64(0)
-
-	scene.camera.project(scene)
-
 	pressedKeys := map[string]bool{}
 	wnd.KeyDown = func(scancode int, rn rune, name string) {
 		pressedKeys[name] = true
 	}
+	wnd.KeyUp = func(scancode int, rn rune, name string) {
+		delete(pressedKeys, name)
+	}
 
+	t := float64(0)
 	lastFrame := time.Now()
+	moveSpeed := .05
+
 	wnd.MainLoop(func() {
 		for key := range pressedKeys {
-			delete(pressedKeys, key)
 			if key == "KeyD" {
-				scene.camera.position.x += 0.1
+				scene.camera.position.x += moveSpeed
 			}
 			if key == "KeyA" {
-				scene.camera.position.x -= 0.1
+				scene.camera.position.x -= moveSpeed
 			}
 			if key == "KeyW" {
-				scene.camera.position.z -= 0.1
+				scene.camera.position.z -= moveSpeed
 			}
 			if key == "KeyS" {
-				scene.camera.position.z += 0.1
+				scene.camera.position.z += moveSpeed
+			}
+			if key == "ArrowUp" {
+				scene.camera.position.y += moveSpeed
+			}
+			if key == "ArrowDown" {
+				scene.camera.position.y -= moveSpeed
 			}
 		}
 
-		// scene.lightPosition.z = math.Cos(t/10) * 3
-		// scene.lightPosition.x = math.Sin(t/10) * 3
-		scene.camera.project(scene)
+		scene.lightPosition.z = math.Cos(t/50) * 3
+		scene.lightPosition.x = math.Sin(t/50) * 3
+
 		cv.PutImageData(scene.render(), 0, 0)
 
 		elapsed := time.Since(lastFrame)
 		lastFrame = time.Now()
 		t += float64(elapsed.Milliseconds()) / 10
-		if true {
+		if false {
 			fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
 		}
 	})

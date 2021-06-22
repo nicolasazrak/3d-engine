@@ -20,6 +20,18 @@ type Triangle struct {
 	normals       []Vector3
 	cameraNormals []Vector3
 	uvMapping     []Vector3
+	quad          *Triangle
+}
+
+func newTriangle() *Triangle {
+	return &Triangle{
+		verts:         []Vector3{{}, {}, {}},
+		normals:       []Vector3{{}, {}, {}},
+		viewportVerts: []Vector2{{}, {}, {}},
+		uvMapping:     []Vector3{{}, {}, {}},
+		cameraVerts:   []Vector3{{}, {}, {}},
+		cameraNormals: []Vector3{{}, {}, {}},
+	}
 }
 
 func parseInt(s string) int {
@@ -92,14 +104,12 @@ func parseModel(objPath string, shader Shader) *Model {
 			normalIdx2 := parseInt(strings.Split(splitted[2], "/")[2]) - 1
 			normalIdx3 := parseInt(strings.Split(splitted[3], "/")[2]) - 1
 
-			triangles = append(triangles, &Triangle{
-				verts:         []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]},
-				normals:       []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]},
-				uvMapping:     []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]},
-				viewportVerts: []Vector2{{}, {}, {}},
-				cameraVerts:   []Vector3{{}, {}, {}},
-				cameraNormals: []Vector3{{}, {}, {}},
-			})
+			triangle := newTriangle()
+			triangle.verts = []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]}
+			triangle.normals = []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]}
+			triangle.uvMapping = []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]}
+
+			triangles = append(triangles, triangle)
 		}
 	}
 

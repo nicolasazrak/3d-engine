@@ -69,11 +69,11 @@ func (cam *Camera) project(scene *Scene) {
 				triangle.viewportVerts[i].x = (triangle.cameraVerts[i].x/-res.z + 1.) * scene.fWidth / 2.
 				triangle.viewportVerts[i].y = (triangle.cameraVerts[i].y/-res.z + 1.) * scene.fHeight / 2.
 
-				// fmt.Println(triangle.viewVerts[i])
 			}
 
 			for i, normal := range triangle.normals {
-				triangle.cameraNormals[i] = normalize(matmult(cam.normalMatrix, normal, 0))
+				res := matmult(cam.normalMatrix, normal, 0)
+				triangle.cameraNormals[i] = normalize(res)
 			}
 		}
 	}

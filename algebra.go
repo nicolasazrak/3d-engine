@@ -46,11 +46,11 @@ func norm(a Vector3) float64 {
 }
 
 func normalize(a Vector3) Vector3 {
-	n := norm(a)
+	n := 1 / norm(a)
 	return Vector3{
-		x: a.x / n,
-		y: a.y / n,
-		z: a.z / n,
+		x: a.x * n,
+		y: a.y * n,
+		z: a.z * n,
 	}
 }
 
@@ -67,7 +67,7 @@ func baycentricCoordinates(x float64, y float64, triangle []Vector3) Vector3 {
 	v1 := Vector3{triangle[2].y - triangle[0].y, triangle[1].y - triangle[0].y, triangle[0].y - y}
 	u := crossProduct(v0, v1)
 
-	if math.Abs(u.z) < 1 {
+	if u.z > -1 && u.z < 1 {
 		return Vector3{-1, -1, -1}
 	}
 
@@ -91,8 +91,8 @@ func matmult(m [4][4]float64, vec Vector3, h float64) Vector3 {
 	y := m[0][1]*vec.x + m[1][1]*vec.y + m[2][1]*vec.z + m[3][1]*h
 	z := m[0][2]*vec.x + m[1][2]*vec.y + m[2][2]*vec.z + m[3][2]*h
 	w := m[0][3]*vec.x + m[1][3]*vec.y + m[2][3]*vec.z + m[3][3]*h
-
-	return Vector3{x / w, y / w, z / w}
+	div := 1 / w
+	return Vector3{x * div, y * div, z * div}
 }
 
 func inverseTranspose(dst *[4][4]float64, src [4][4]float64) {
