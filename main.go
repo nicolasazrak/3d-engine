@@ -26,6 +26,8 @@ type Scene struct {
 	projectedLight Vector3
 	camera         *Camera
 	trianglesDrawn int
+	lastFrame      time.Time
+	t              float64
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
@@ -62,11 +64,9 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 
 		for x := minbbox.x; x <= maxbbox.x; x++ {
 			if (w0 | w1 | w2) >= 0 {
-				sum := float64(w0 + w1 + w2)
-				d := 1 / sum
-				l0 := float64(w0) * d
-				l1 := float64(w1) * d
-				l2 := float64(w2) * d
+				l0 := float64(w0) * area
+				l1 := float64(w1) * area
+				l2 := float64(w2) * area
 
 				zPos := 1 / (l0*(1/triangle.viewVerts[0].z) + l1*(1/triangle.viewVerts[1].z) + l2*(1/triangle.viewVerts[2].z))
 				zPos = -zPos // WTF ??
@@ -139,6 +139,43 @@ func (scene *Scene) render() *image.RGBA {
 	return scene.toImage()
 }
 
+func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
+	moveSpeed := .1
+
+	for key := range pressedKeys {
+		if key == "KeyD" {
+			scene.camera.position.x += moveSpeed
+		}
+		if key == "KeyA" {
+			scene.camera.position.x -= moveSpeed
+		}
+		if key == "KeyW" {
+			scene.camera.position.z -= moveSpeed
+		}
+		if key == "KeyS" {
+			scene.camera.position.z += moveSpeed
+		}
+		if key == "ArrowUp" {
+			scene.camera.position.y += moveSpeed
+		}
+		if key == "ArrowDown" {
+			scene.camera.position.y -= moveSpeed
+		}
+	}
+}
+
+func (scene *Scene) processFrame() {
+	scene.lightPosition.z = math.Cos(scene.t/50) * 3
+	scene.lightPosition.x = math.Sin(scene.t/50) * 3
+
+	elapsed := time.Since(scene.lastFrame)
+	scene.lastFrame = time.Now()
+	scene.t += float64(elapsed.Milliseconds()) / 10
+	if true {
+		fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
+	}
+}
+
 func newScene(width int, height int, scaleFactor int) *Scene {
 	scene := Scene{
 		models:        []*Model{},
@@ -151,6 +188,7 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 		fHeight:       float64(height / scaleFactor),
 		lightPosition: Vector3{2, 2, 1.5},
 		camera:        newCamera(),
+		lastFrame:     time.Now(),
 	}
 
 	scene.pixBuffer = make([]uint8, scene.width*scene.height*4*scene.scaleFactor*scaleFactor)
@@ -170,6 +208,27 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 	return &scene
 }
 
+func addModels(scene *Scene) {
+	grassTexture := newTextureShader("assets/grass.texture.jpg")
+	brickTexture := newTextureShader("assets/brick.texture.jpg")
+	headTexture := newTextureShader("assets/head.texture.tga")
+
+	scene.models = append(scene.models, newXZSquare(4, grassTexture).moveY(-2))
+	scene.models = append(scene.models, newXYSquare(4, brickTexture).moveZ(-2))
+	scene.models = append(scene.models, parseModel("assets/head.obj", headTexture))
+}
+
+func takeProfile() func() {
+	f, err := os.Create("cpu")
+	if err != nil {
+		panic(err)
+	}
+	pprof.StartCPUProfile(f)
+	return func() {
+		pprof.StopCPUProfile()
+	}
+}
+
 func main() {
 	wnd, cv, err := sdlcanvas.CreateWindow(1000, 1000, "Hello")
 	if err != nil {
@@ -178,25 +237,9 @@ func main() {
 	defer wnd.Destroy()
 
 	scene := newScene(cv.Width(), cv.Height(), 2)
+	addModels(scene)
 
-	scene.models = append(scene.models,
-		newXZSquare(4, newTextureShader("assets/grass.texture.jpg")).moveY(-2),
-	)
-	scene.models = append(scene.models,
-		newXYSquare(4, newTextureShader("assets/brick.texture.jpg")).moveZ(-2),
-	)
-	scene.models = append(scene.models,
-		parseModel("assets/head.obj", newTextureShader("assets/head.texture.tga")),
-	)
-
-	if true {
-		f, err := os.Create("cpu")
-		if err != nil {
-			panic(err)
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
+	// defer takeProfile()
 
 	pressedKeys := map[string]bool{}
 	wnd.KeyDown = func(scancode int, rn rune, name string) {
@@ -206,43 +249,9 @@ func main() {
 		delete(pressedKeys, name)
 	}
 
-	t := float64(0)
-	lastFrame := time.Now()
-	moveSpeed := .1
-
-	// r := scene.render()
 	wnd.MainLoop(func() {
-		for key := range pressedKeys {
-			if key == "KeyD" {
-				scene.camera.position.x += moveSpeed
-			}
-			if key == "KeyA" {
-				scene.camera.position.x -= moveSpeed
-			}
-			if key == "KeyW" {
-				scene.camera.position.z -= moveSpeed
-			}
-			if key == "KeyS" {
-				scene.camera.position.z += moveSpeed
-			}
-			if key == "ArrowUp" {
-				scene.camera.position.y += moveSpeed
-			}
-			if key == "ArrowDown" {
-				scene.camera.position.y -= moveSpeed
-			}
-		}
-
-		scene.lightPosition.z = math.Cos(t/50) * 3
-		scene.lightPosition.x = math.Sin(t/50) * 3
-
+		scene.handleKeys(pressedKeys)
+		scene.processFrame()
 		cv.PutImageData(scene.render(), 0, 0)
-
-		elapsed := time.Since(lastFrame)
-		lastFrame = time.Now()
-		t += float64(elapsed.Milliseconds()) / 10
-		if true {
-			fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
-		}
 	})
 }
