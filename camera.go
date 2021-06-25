@@ -4,6 +4,8 @@ type Camera struct {
 	position     Vector3
 	target       Vector3
 	angle        float64
+	farPlane     float64
+	nearPlane    float64
 	viewMatrix   [4][4]float64
 	normalMatrix [4][4]float64
 }
@@ -13,6 +15,8 @@ func newCamera() *Camera {
 		position:     Vector3{0, 0, 4},
 		target:       Vector3{0, 0, -1},
 		angle:        0,
+		farPlane:     -20.,
+		nearPlane:    -.5,
 		viewMatrix:   [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 		normalMatrix: [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 	}

@@ -31,20 +31,31 @@ type Scene struct {
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
+	pts := triangle.viewportVerts
+
 	if triangle.viewNormals[0].z < 0 && triangle.viewNormals[1].z < 0 && triangle.viewNormals[2].z < 0 {
 		// Back-face culling
 		return
 	}
-	pts := triangle.viewportVerts
-	area := 1. / float64(orient2d(pts[0], pts[1], pts[2].x, pts[2].y))
-	if area <= 0 {
+
+	if math.Abs(triangle.viewVerts[0].z) < -scene.camera.nearPlane && math.Abs(triangle.viewVerts[1].z) < -scene.camera.nearPlane && math.Abs(triangle.viewVerts[2].z) < -scene.camera.nearPlane {
+		// pseudo frustrum culling
 		return
 	}
 
-	farPlane := -20.
-	nearPlane := -.5
-	scene.trianglesDrawn++
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
+	if minbbox.x > maxbbox.x || minbbox.y > maxbbox.y || maxbbox.x < 0 || maxbbox.y < 0 || minbbox.x > scene.fWidth || minbbox.y > scene.fHeight {
+		// pseudo frustrum culling
+		return
+	}
+
+	area := 1. / float64(orient2d(pts[0], pts[1], pts[2].x, pts[2].y))
+	if area <= 0 {
+		// behind camera
+		return
+	}
+
+	scene.trianglesDrawn++
 
 	A01 := int(pts[0].y - pts[1].y)
 	B01 := int(pts[1].x - pts[0].x)
@@ -71,7 +82,7 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 				zPos := 1 / (l0*triangle.invViewZ[0] + l1*triangle.invViewZ[1] + l2*triangle.invViewZ[2])
 				idx := int(x) + (int(y))*scene.width
 
-				if zPos > farPlane && zPos < nearPlane && zPos > scene.zBuffer[idx] {
+				if zPos > scene.camera.farPlane && zPos < scene.camera.nearPlane && zPos > scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
 					r, g, b := model.shader.shade(scene, triangle, [3]float64{l0, l1, l2}, zPos)
 					scene.setAt(int(x), int(y), r, g, b)
@@ -238,8 +249,8 @@ func main() {
 	scene := newScene(cv.Width(), cv.Height(), 2)
 	addModels(scene)
 
-	endProfile := takeProfile()
-	defer endProfile()
+	// endProfile := takeProfile()
+	// defer endProfile()
 
 	pressedKeys := map[string]bool{}
 	wnd.KeyDown = func(scancode int, rn rune, name string) {
