@@ -1,9 +1,5 @@
 package main
 
-import (
-	"math"
-)
-
 type Camera struct {
 	position     Vector3
 	target       Vector3
@@ -14,7 +10,7 @@ type Camera struct {
 
 func newCamera() *Camera {
 	return &Camera{
-		position:     Vector3{0, 0, 1},
+		position:     Vector3{0, 0, 4},
 		target:       Vector3{0, 0, -1},
 		angle:        0,
 		viewMatrix:   [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
@@ -27,7 +23,7 @@ func (cam *Camera) updateViewMatrix() {
 	// Look at camera
 
 	// target := Vector3{0, 0, 0}
-	// cam.target = Vector3{cam.position.x, cam.position.y, cam.position.z - 1}
+	cam.target = Vector3{cam.position.x, cam.position.y, cam.position.z - 1}
 	zaxis := normalize(minus(cam.position, cam.target))
 	xaxis := normalize(crossProduct(Vector3{0, 1, 0}, zaxis))
 	yaxis := crossProduct(zaxis, xaxis)
@@ -47,9 +43,9 @@ func (cam *Camera) updateViewMatrix() {
 	cam.viewMatrix[2][2] = zaxis.z
 	cam.viewMatrix[2][3] = 0
 
-	cam.viewMatrix[3][0] = -math.Max(dotProduct(xaxis, cam.position), 0.0001) // avoids division by 0
-	cam.viewMatrix[3][1] = -math.Max(dotProduct(yaxis, cam.position), 0.0001)
-	cam.viewMatrix[3][2] = -math.Max(dotProduct(zaxis, cam.position), 0.0001)
+	cam.viewMatrix[3][0] = -dotProduct(xaxis, cam.position)
+	cam.viewMatrix[3][1] = -dotProduct(yaxis, cam.position)
+	cam.viewMatrix[3][2] = -dotProduct(zaxis, cam.position)
 	cam.viewMatrix[3][3] = 1
 
 	inverseTranspose(&cam.normalMatrix, cam.viewMatrix)

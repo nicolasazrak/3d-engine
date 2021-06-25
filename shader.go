@@ -87,7 +87,8 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, l0 f
 	z := 1 / (l0*t.invViewZ[0] + l1*t.invViewZ[1] + l2*t.invViewZ[2])
 	p := ponderate(triangle.viewVerts, []float64{l0, l1, l2})
 	p.z = z
-	intensity := 1. / math.Sqrt(norm(minus(p, scene.projectedLight)))
+	intensity := 1. / (norm(minus(p, scene.projectedLight)))
+	intensity += 0.4 // ambient
 
 	if intensity < 0 {
 		// Shoudln't be needed if there was occulsion culling or shadows ?
