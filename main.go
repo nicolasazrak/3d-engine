@@ -41,8 +41,8 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 		return
 	}
 
-	farPlane := 20.
-	nearPlane := .5
+	farPlane := -20.
+	nearPlane := -.5
 	scene.trianglesDrawn++
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 
@@ -68,13 +68,12 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 				l1 := float64(w1) * area
 				l2 := float64(w2) * area
 
-				zPos := 1 / (l0*(1/triangle.viewVerts[0].z) + l1*(1/triangle.viewVerts[1].z) + l2*(1/triangle.viewVerts[2].z))
-				zPos = -zPos // WTF ??
+				zPos := 1 / (l0*triangle.invViewZ[0] + l1*triangle.invViewZ[1] + l2*triangle.invViewZ[2])
 				idx := int(x) + (int(y))*scene.width
 
-				if zPos < farPlane && zPos > nearPlane && zPos < scene.zBuffer[idx] {
+				if zPos > farPlane && zPos < nearPlane && zPos > scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
-					r, g, b := model.shader.shade(scene, triangle, l0, l1, l2)
+					r, g, b := model.shader.shade(scene, triangle, [3]float64{l0, l1, l2}, zPos)
 					scene.setAt(int(x), int(y), r, g, b)
 				}
 			}
@@ -202,7 +201,7 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 		scene.cleanPixBuffer[idx+3] = uint8(255)
 	}
 	for i := range scene.zBuffer {
-		scene.cleanZBuffer[i] = 999999
+		scene.cleanZBuffer[i] = -999999
 	}
 
 	return &scene
