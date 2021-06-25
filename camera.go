@@ -14,8 +14,8 @@ type Camera struct {
 
 func newCamera() *Camera {
 	return &Camera{
-		position:     Vector3{0, 0, 3},
-		target:       Vector3{0, 0, 0},
+		position:     Vector3{0, 0, 1},
+		target:       Vector3{0, 0, -1},
 		angle:        0,
 		viewMatrix:   [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
 		normalMatrix: [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
@@ -27,7 +27,7 @@ func (cam *Camera) updateViewMatrix() {
 	// Look at camera
 
 	// target := Vector3{0, 0, 0}
-	// target := Vector3{cam.position.x, cam.position.y, cam.position.z - 1}
+	// cam.target = Vector3{cam.position.x, cam.position.y, cam.position.z - 1}
 	zaxis := normalize(minus(cam.position, cam.target))
 	xaxis := normalize(crossProduct(Vector3{0, 1, 0}, zaxis))
 	yaxis := crossProduct(zaxis, xaxis)
@@ -60,21 +60,28 @@ func (cam *Camera) project(scene *Scene) {
 	scene.projectedLight = matmult(cam.viewMatrix, scene.lightPosition, 1)
 	for _, model := range scene.models {
 		for _, triangle := range model.triangles {
-			for i, vert := range triangle.verts {
-				res := matmult(cam.viewMatrix, vert, 1)
-				triangle.cameraVerts[i].x = res.x
-				triangle.cameraVerts[i].y = res.y
-				triangle.cameraVerts[i].z = res.z
-
-				triangle.viewportVerts[i].x = (triangle.cameraVerts[i].x/-res.z + 1.) * scene.fWidth / 2.
-				triangle.viewportVerts[i].y = (triangle.cameraVerts[i].y/-res.z + 1.) * scene.fHeight / 2.
-
-			}
-
-			for i, normal := range triangle.normals {
-				res := matmult(cam.normalMatrix, normal, 0)
-				triangle.cameraNormals[i] = normalize(res)
-			}
+			cam.projectTriangle(triangle, scene.fWidth, scene.fHeight)
 		}
+	}
+}
+
+func (cam *Camera) projectTriangle(triangle *Triangle, width float64, height float64) {
+	for i := 0; i < 3; i++ {
+		res := matmult(cam.viewMatrix, triangle.worldVerts[i], 1)
+		triangle.viewVerts[i].x = res.x
+		triangle.viewVerts[i].y = res.y
+		triangle.viewVerts[i].z = res.z
+
+		triangle.viewportVerts[i].x = (triangle.viewVerts[i].x/-res.z + 1.) * width / 2.
+		triangle.viewportVerts[i].y = (triangle.viewVerts[i].y/-res.z + 1.) * height / 2.
+
+		res2 := matmult(cam.normalMatrix, triangle.normals[i], 0)
+		triangle.viewNormals[i] = normalize(res2)
+
+		triangle.uvMappingCorrected[i][0] = triangle.uvMapping[i][0] / triangle.viewVerts[i].z
+		triangle.uvMappingCorrected[i][1] = triangle.uvMapping[i][1] / triangle.viewVerts[i].z
+		triangle.uvMappingCorrected[i][2] = triangle.uvMapping[i][2] / triangle.viewVerts[i].z
+
+		triangle.invViewZ[i] = 1 / triangle.viewVerts[i].z
 	}
 }

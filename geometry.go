@@ -11,23 +11,20 @@ func newXZSquare(size float64, shader Shader) *Model {
 
 	normal := Vector3{x: 0, y: 1, z: 0}
 
-	text0 := Vector3{x: 0, y: 0, z: 0}
-	text1 := Vector3{x: 0.999, y: 0, z: 0}
-	text2 := Vector3{x: 0.999, y: 0.999, z: 0}
-	text3 := Vector3{x: 0, y: 0.999, z: 0}
+	text0 := []float64{0, 0, 0}
+	text1 := []float64{0.999, 0, 0}
+	text2 := []float64{0.999, 0.999, 0}
+	text3 := []float64{0, 0.999, 0}
 
 	triangle1 := newTriangle()
-	triangle1.verts = t0
+	triangle1.worldVerts = t0
 	triangle1.normals = []Vector3{normal, normal, normal}
-	triangle1.uvMapping = []Vector3{text1, text0, text2}
+	triangle1.uvMapping = [][]float64{text1, text0, text2}
 
 	triangle2 := newTriangle()
-	triangle2.verts = t1
+	triangle2.worldVerts = t1
 	triangle2.normals = []Vector3{normal, normal, normal}
-	triangle2.uvMapping = []Vector3{text3, text2, text0}
-
-	triangle1.quad = triangle2
-	triangle2.quad = triangle1
+	triangle2.uvMapping = [][]float64{text3, text2, text0}
 
 	return &Model{
 		triangles: []*Triangle{triangle1, triangle2},
@@ -49,23 +46,20 @@ func newXYSquare(size float64, shader Shader) *Model {
 
 	normal := Vector3{x: 0, y: 0, z: 1}
 
-	text0 := Vector3{x: 0, y: 0.999, z: 0}
-	text1 := Vector3{x: 0, y: 0, z: 0}
-	text2 := Vector3{x: 0.999, y: 0, z: 0}
-	text3 := Vector3{x: 0.999, y: 0.999, z: 0}
+	text0 := []float64{0, 0.999, 0}
+	text1 := []float64{0, 0, 0}
+	text2 := []float64{0.999, 0, 0}
+	text3 := []float64{0.999, 0.999, 0}
 
 	triangle1 := newTriangle()
-	triangle1.verts = t0
+	triangle1.worldVerts = t0
 	triangle1.normals = []Vector3{normal, normal, normal}
-	triangle1.uvMapping = []Vector3{text1, text2, text0}
+	triangle1.uvMapping = [][]float64{text1, text2, text0}
 
 	triangle2 := newTriangle()
-	triangle2.verts = t1
+	triangle2.worldVerts = t1
 	triangle2.normals = []Vector3{normal, normal, normal}
-	triangle2.uvMapping = []Vector3{text3, text0, text2}
-
-	triangle1.quad = triangle2
-	triangle2.quad = triangle1
+	triangle2.uvMapping = [][]float64{text3, text0, text2}
 
 	return &Model{
 		triangles: []*Triangle{triangle1, triangle2},

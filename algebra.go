@@ -86,6 +86,14 @@ func ponderate(pts []Vector3, weights []float64) Vector3 {
 	}
 }
 
+func ponderate2(pts [][]float64, weights []float64) Vector3 {
+	return Vector3{
+		x: pts[0][0]*weights[0] + pts[1][0]*weights[1] + pts[2][0]*weights[2],
+		y: pts[0][1]*weights[0] + pts[1][1]*weights[1] + pts[2][1]*weights[2],
+		z: pts[0][2]*weights[0] + pts[1][2]*weights[1] + pts[2][2]*weights[2],
+	}
+}
+
 func matmult(m [4][4]float64, vec Vector3, h float64) Vector3 {
 	x := m[0][0]*vec.x + m[1][0]*vec.y + m[2][0]*vec.z + m[3][0]*h
 	y := m[0][1]*vec.x + m[1][1]*vec.y + m[2][1]*vec.z + m[3][1]*h

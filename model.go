@@ -14,23 +14,26 @@ type Model struct {
 }
 
 type Triangle struct {
-	verts         []Vector3
-	cameraVerts   []Vector3
-	viewportVerts []Vector2
-	normals       []Vector3
-	cameraNormals []Vector3
-	uvMapping     []Vector3
-	quad          *Triangle
+	worldVerts         []Vector3 // world space
+	viewVerts          []Vector3 // view space relative to camera
+	viewportVerts      []Vector2 // ndc space relative to viewports [-1,1]
+	normals            []Vector3
+	viewNormals        []Vector3 // view/camera space
+	uvMapping          [][]float64
+	uvMappingCorrected [][]float64
+	invViewZ           []float64
 }
 
 func newTriangle() *Triangle {
 	return &Triangle{
-		verts:         []Vector3{{}, {}, {}},
-		normals:       []Vector3{{}, {}, {}},
-		viewportVerts: []Vector2{{}, {}, {}},
-		uvMapping:     []Vector3{{}, {}, {}},
-		cameraVerts:   []Vector3{{}, {}, {}},
-		cameraNormals: []Vector3{{}, {}, {}},
+		worldVerts:         []Vector3{{}, {}, {}},
+		normals:            []Vector3{{}, {}, {}},
+		viewportVerts:      []Vector2{{}, {}, {}},
+		uvMapping:          [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+		uvMappingCorrected: [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+		invViewZ:           []float64{0, 0, 0},
+		viewVerts:          []Vector3{{}, {}, {}},
+		viewNormals:        []Vector3{{}, {}, {}},
 	}
 }
 
@@ -63,7 +66,7 @@ func parseModel(objPath string, shader Shader) *Model {
 	triangles := []*Triangle{}
 	vertex := []Vector3{}
 	normals := []Vector3{}
-	textures := []Vector3{}
+	textures := [][]float64{}
 
 	for _, line := range strings.Split(str, "\n") {
 		if strings.HasPrefix(line, "v ") {
@@ -84,10 +87,10 @@ func parseModel(objPath string, shader Shader) *Model {
 
 		if strings.HasPrefix(line, "vt ") {
 			splitted := strings.Split(line, " ")
-			x := parseFloat(splitted[2])
-			y := 1 - parseFloat(splitted[3])
-			z := parseFloat(splitted[4])
-			textures = append(textures, Vector3{x, y, z})
+			u := parseFloat(splitted[2])
+			v := 1 - parseFloat(splitted[3])
+			w := parseFloat(splitted[4])
+			textures = append(textures, []float64{u, v, w})
 		}
 
 		if strings.HasPrefix(line, "f ") {
@@ -105,9 +108,9 @@ func parseModel(objPath string, shader Shader) *Model {
 			normalIdx3 := parseInt(strings.Split(splitted[3], "/")[2]) - 1
 
 			triangle := newTriangle()
-			triangle.verts = []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]}
+			triangle.worldVerts = []Vector3{vertex[vertexIdx1], vertex[vertexIdx2], vertex[vertexIdx3]}
 			triangle.normals = []Vector3{normals[normalIdx1], normals[normalIdx2], normals[normalIdx3]}
-			triangle.uvMapping = []Vector3{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]}
+			triangle.uvMapping = [][]float64{textures[textureIdx1], textures[textureIdx2], textures[textureIdx3]}
 
 			triangles = append(triangles, triangle)
 		}
@@ -121,8 +124,8 @@ func parseModel(objPath string, shader Shader) *Model {
 
 func (model *Model) moveX(x float64) *Model {
 	for _, triangle := range model.triangles {
-		for i := range triangle.verts {
-			triangle.verts[i].x += x
+		for i := range triangle.worldVerts {
+			triangle.worldVerts[i].x += x
 		}
 	}
 	return model
@@ -130,8 +133,8 @@ func (model *Model) moveX(x float64) *Model {
 
 func (model *Model) moveY(y float64) *Model {
 	for _, triangle := range model.triangles {
-		for i := range triangle.verts {
-			triangle.verts[i].y += y
+		for i := range triangle.worldVerts {
+			triangle.worldVerts[i].y += y
 		}
 	}
 	return model
@@ -139,8 +142,8 @@ func (model *Model) moveY(y float64) *Model {
 
 func (model *Model) moveZ(z float64) *Model {
 	for _, triangle := range model.triangles {
-		for i := range triangle.verts {
-			triangle.verts[i].z += z
+		for i := range triangle.worldVerts {
+			triangle.worldVerts[i].z += z
 		}
 	}
 	return model
