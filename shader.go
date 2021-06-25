@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"image"
-	"math"
 	"os"
 )
 
@@ -82,15 +81,22 @@ type TextureShader struct {
 	texture *FastImage
 }
 
+func clampColor(a float64) uint8 {
+	if a > 255 {
+		return 255
+	}
+	return uint8(a)
+}
+
 func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
 	l0 := coordinates[0]
 	l1 := coordinates[1]
 	l2 := coordinates[2]
 
 	t := triangle
-	p := ponderate(triangle.viewVerts, []float64{l0, l1, l2})
+	p := ponderate(triangle.viewVerts, coordinates[:])
 	p.z = z
-	intensity := 1. / (norm(minus(p, scene.projectedLight)))
+	intensity := 1. / norm(minus(p, scene.projectedLight))
 	intensity += 0.4 // ambient
 
 	if intensity < 0 {
@@ -102,17 +108,19 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coor
 		u *= z
 		v *= z
 
-		if u < 0 || v < 0 {
+		if u < 0 || v < 0 || u >= 1 || v >= 1 {
+			// TODO remove this
 			return 0, 0, 0
 		}
-		x := int(math.Min(u*textureShader.texture.width, textureShader.texture.width-1))
-		y := int(math.Min(v*textureShader.texture.height, textureShader.texture.height-1))
+
+		x := int(u * textureShader.texture.width)
+		y := int(v * textureShader.texture.height)
 		idx := (x + y*int(textureShader.texture.width)) * 4
 		r := textureShader.texture.data[idx]
 		g := textureShader.texture.data[idx+1]
 		b := textureShader.texture.data[idx+2]
 
-		return uint8(math.Min(r*intensity, 255)), uint8(math.Min(g*intensity, 255)), uint8(math.Min(b*intensity, 255))
+		return clampColor(r * intensity), clampColor(g * intensity), clampColor(b * intensity)
 	}
 }
 

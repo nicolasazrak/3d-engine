@@ -238,7 +238,8 @@ func main() {
 	scene := newScene(cv.Width(), cv.Height(), 2)
 	addModels(scene)
 
-	// defer takeProfile()
+	endProfile := takeProfile()
+	defer endProfile()
 
 	pressedKeys := map[string]bool{}
 	wnd.KeyDown = func(scancode int, rn rune, name string) {
