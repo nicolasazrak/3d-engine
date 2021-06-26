@@ -12,46 +12,46 @@ import (
 )
 
 type Scene struct {
-	models         []*Model
-	scaleFactor    int
+	// buffers
 	zBuffer        []float64
 	pixBuffer      []uint8
 	cleanPixBuffer []uint8
 	cleanZBuffer   []float64
-	width          int
-	height         int
-	fWidth         float64
-	fHeight        float64
+
+	// window
+	width       int
+	height      int
+	fWidth      float64
+	fHeight     float64
+	scaleFactor int
+
+	// camera, lights and models
 	lightPosition  Vector3
 	projectedLight Vector3
-	camera         *Camera
-	trianglesDrawn int
-	lastFrame      time.Time
-	t              float64
+	camera         Camera
+	models         []*Model
+
+	// frame stats
+	t                 float64
+	lastElapsedMillis float64
+	trianglesDrawn    int
+	lastFrame         time.Time
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	pts := triangle.viewportVerts
 
-	if triangle.viewNormals[0].z < 0 && triangle.viewNormals[1].z < 0 && triangle.viewNormals[2].z < 0 {
-		// Back-face culling
-		return
-	}
-
-	if math.Abs(triangle.viewVerts[0].z) < -scene.camera.nearPlane && math.Abs(triangle.viewVerts[1].z) < -scene.camera.nearPlane && math.Abs(triangle.viewVerts[2].z) < -scene.camera.nearPlane {
-		// pseudo frustrum culling
-		return
-	}
-
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 	if minbbox.x > maxbbox.x || minbbox.y > maxbbox.y || maxbbox.x < 0 || maxbbox.y < 0 || minbbox.x > scene.fWidth || minbbox.y > scene.fHeight {
 		// pseudo frustrum culling
+		// fmt.Println("bounding box culled")
 		return
 	}
 
 	area := 1. / float64(orient2d(pts[0], pts[1], pts[2].x, pts[2].y))
 	if area <= 0 {
-		// behind camera
+		// pseudo backface culling
+		// fmt.Println("wrong orientation")
 		return
 	}
 
@@ -82,7 +82,7 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 				zPos := 1 / (l0*triangle.invViewZ[0] + l1*triangle.invViewZ[1] + l2*triangle.invViewZ[2])
 				idx := int(x) + (int(y))*scene.width
 
-				if zPos > scene.camera.farPlane && zPos < scene.camera.nearPlane && zPos > scene.zBuffer[idx] {
+				if zPos > scene.camera.farPlane() && zPos < scene.camera.nearPlane() && zPos > scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
 					r, g, b := model.shader.shade(scene, triangle, [3]float64{l0, l1, l2}, zPos)
 					scene.setAt(int(x), int(y), r, g, b)
@@ -101,10 +101,32 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	}
 }
 
+func (scene *Scene) isFrontFacing(triangle *Triangle) bool {
+	return triangle.viewNormals[0].z >= 0 ||
+		triangle.viewNormals[1].z >= 0 ||
+		triangle.viewNormals[2].z >= 0
+}
+
+func (scene *Scene) isInFrustum(triangle *Triangle) bool {
+	return math.Abs(triangle.viewVerts[0].z) > -scene.camera.nearPlane() ||
+		math.Abs(triangle.viewVerts[1].z) > -scene.camera.nearPlane() ||
+		math.Abs(triangle.viewVerts[2].z) > -scene.camera.nearPlane()
+}
+
+func (scene *Scene) clip(triangle *Triangle) []*Triangle {
+	// TODO
+	return []*Triangle{triangle}
+}
+
 func (scene *Scene) drawModels() {
 	for _, model := range scene.models {
 		for _, triangle := range model.triangles {
-			scene.drawTriangle(model, triangle)
+			if scene.isFrontFacing(triangle) && scene.isInFrustum(triangle) {
+				triangles := scene.clip(triangle)
+				for _, clipped := range triangles {
+					scene.drawTriangle(model, clipped)
+				}
+			}
 		}
 	}
 }
@@ -150,40 +172,47 @@ func (scene *Scene) render() *image.RGBA {
 }
 
 func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
-	moveSpeed := .1
+	moveSpeed := scene.lastElapsedMillis * 0.003
+	rotationSpeed := scene.lastElapsedMillis * 0.0005
 
 	for key := range pressedKeys {
 		if key == "KeyD" {
-			scene.camera.position.x += moveSpeed
+			scene.camera.move(moveSpeed, 0, 0)
 		}
 		if key == "KeyA" {
-			scene.camera.position.x -= moveSpeed
+			scene.camera.move(-moveSpeed, 0, 0)
 		}
 		if key == "KeyW" {
-			scene.camera.position.z -= moveSpeed
+			scene.camera.move(0, 0, -moveSpeed)
 		}
 		if key == "KeyS" {
-			scene.camera.position.z += moveSpeed
+			scene.camera.move(0, 0, moveSpeed)
 		}
 		if key == "ArrowUp" {
-			scene.camera.position.y += moveSpeed
+			scene.camera.rotate(0, rotationSpeed)
 		}
 		if key == "ArrowDown" {
-			scene.camera.position.y -= moveSpeed
+			scene.camera.rotate(0, -rotationSpeed)
+		}
+		if key == "ArrowLeft" {
+			scene.camera.rotate(rotationSpeed, 0)
+		}
+		if key == "ArrowRight" {
+			scene.camera.rotate(-rotationSpeed, 0)
 		}
 	}
 }
 
-func (scene *Scene) processFrame() {
+func (scene *Scene) processFrame(pressedKeys map[string]bool) {
 	scene.lightPosition.z = math.Cos(scene.t/50) * 3
 	scene.lightPosition.x = math.Sin(scene.t/50) * 3
 
 	elapsed := time.Since(scene.lastFrame)
 	scene.lastFrame = time.Now()
 	scene.t += float64(elapsed.Milliseconds()) / 10
-	if true {
-		fmt.Println(elapsed.String(), "Triangles = ", scene.trianglesDrawn)
-	}
+	scene.lastElapsedMillis = float64(elapsed.Milliseconds())
+
+	scene.handleKeys(pressedKeys)
 }
 
 func newScene(width int, height int, scaleFactor int) *Scene {
@@ -197,7 +226,7 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 		fWidth:        float64(width / scaleFactor),
 		fHeight:       float64(height / scaleFactor),
 		lightPosition: Vector3{2, 2, 1.5},
-		camera:        newCamera(),
+		camera:        newFPSCamera(),
 		lastFrame:     time.Now(),
 	}
 
@@ -260,9 +289,17 @@ func main() {
 		delete(pressedKeys, name)
 	}
 
+	// scene.processFrame()
+	// scene.render()
+	// r := scene.render()
+
 	wnd.MainLoop(func() {
-		scene.handleKeys(pressedKeys)
-		scene.processFrame()
+		// cv.PutImageData(r, 0, 0)
+		scene.processFrame(pressedKeys)
 		cv.PutImageData(scene.render(), 0, 0)
+
+		if false {
+			fmt.Println(wnd.FPS(), "Triangles = ", scene.trianglesDrawn)
+		}
 	})
 }
