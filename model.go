@@ -148,3 +148,24 @@ func (model *Model) moveZ(z float64) *Model {
 	}
 	return model
 }
+
+func (model *Model) scale(x, y, z float64) *Model {
+	for _, triangle := range model.triangles {
+		for i := range triangle.worldVerts {
+			triangle.worldVerts[i].x *= x
+			triangle.worldVerts[i].y *= y
+			triangle.worldVerts[i].z *= z
+		}
+	}
+	return model
+}
+
+func (model *Model) scaleUV(u, v float64) *Model {
+	for _, triangle := range model.triangles {
+		for t := range triangle.uvMapping {
+			triangle.uvMapping[t][0] *= u
+			triangle.uvMapping[t][1] *= v
+		}
+	}
+	return model
+}

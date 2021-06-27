@@ -173,7 +173,7 @@ func (scene *Scene) render() *image.RGBA {
 
 func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 	moveSpeed := scene.lastElapsedMillis * 0.003
-	rotationSpeed := scene.lastElapsedMillis * 0.0005
+	rotationSpeed := scene.lastElapsedMillis * 0.001
 
 	for key := range pressedKeys {
 		if key == "KeyD" {
@@ -252,9 +252,13 @@ func addModels(scene *Scene) {
 	brickTexture := newTextureShader("assets/brick.texture.jpg")
 	headTexture := newTextureShader("assets/head.texture.tga")
 
-	scene.models = append(scene.models, newXZSquare(4, grassTexture).moveY(-2))
-	scene.models = append(scene.models, newXYSquare(4, brickTexture).moveZ(-2))
-	scene.models = append(scene.models, parseModel("assets/head.obj", headTexture))
+	grass := newXZSquare(4, grassTexture).scale(4, 1, 1).scaleUV(4, 1).moveY(-2)
+	brick := newXYSquare(4, brickTexture).scale(4, 1, 1).scaleUV(4, 1).moveZ(-1)
+	head := parseModel("assets/head.obj", headTexture)
+
+	scene.models = append(scene.models, grass)
+	scene.models = append(scene.models, brick)
+	scene.models = append(scene.models, head)
 }
 
 func takeProfile() func() {

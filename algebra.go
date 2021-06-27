@@ -2,6 +2,7 @@ package main
 
 import (
 	"math"
+	"unsafe"
 )
 
 type Vector4 struct {
@@ -43,6 +44,25 @@ func crossProduct(a Vector3, b Vector3) Vector3 {
 
 func norm(a Vector3) float64 {
 	return math.Sqrt(a.x*a.x + a.y*a.y + a.z*a.z)
+}
+
+func fastInvSqrt(v float64) float64 {
+	x := float32(v)
+	xhalf := float32(0.5) * x
+	i := *(*int32)(unsafe.Pointer(&x))
+	i = int32(0x5f3759df) - int32(i>>1)
+	x = *(*float32)(unsafe.Pointer(&i))
+	x = x * (1.5 - (xhalf * x * x))
+	return float64(x)
+}
+
+func fastNormalize(a Vector3) Vector3 {
+	n := fastInvSqrt(a.x*a.x + a.y*a.y + a.z*a.z)
+	return Vector3{
+		x: a.x * n,
+		y: a.y * n,
+		z: a.z * n,
+	}
 }
 
 func normalize(a Vector3) Vector3 {

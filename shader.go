@@ -108,13 +108,13 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coor
 		u *= z
 		v *= z
 
-		if u < 0 || v < 0 || u >= 1 || v >= 1 {
+		if u < 0 || v < 0 {
 			// TODO remove this
 			return 0, 0, 0
 		}
 
-		x := int(u * textureShader.texture.width)
-		y := int(v * textureShader.texture.height)
+		x := int(u*textureShader.texture.width) % int(textureShader.texture.width)
+		y := int(v*textureShader.texture.height) % int(textureShader.texture.height)
 		idx := (x + y*int(textureShader.texture.width)) * 4
 		r := textureShader.texture.data[idx]
 		g := textureShader.texture.data[idx+1]

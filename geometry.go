@@ -11,20 +11,22 @@ func newXZSquare(size float64, shader Shader) *Model {
 
 	normal := Vector3{x: 0, y: 1, z: 0}
 
-	text0 := []float64{0, 0, 0}
-	text1 := []float64{0.999, 0, 0}
-	text2 := []float64{0.999, 0.999, 0}
-	text3 := []float64{0, 0.999, 0}
+	textt0v0 := []float64{0, 0, 0}
+	textt1v0 := []float64{0, 0, 0}
+	textt0v1 := []float64{0.999, 0, 0}
+	textt0v2 := []float64{0.999, 0.999, 0}
+	textt1v2 := []float64{0.999, 0.999, 0}
+	textt1v3 := []float64{0, 0.999, 0}
 
 	triangle1 := newTriangle()
 	triangle1.worldVerts = t0
 	triangle1.normals = []Vector3{normal, normal, normal}
-	triangle1.uvMapping = [][]float64{text1, text0, text2}
+	triangle1.uvMapping = [][]float64{textt0v1, textt0v0, textt0v2}
 
 	triangle2 := newTriangle()
 	triangle2.worldVerts = t1
 	triangle2.normals = []Vector3{normal, normal, normal}
-	triangle2.uvMapping = [][]float64{text3, text2, text0}
+	triangle2.uvMapping = [][]float64{textt1v3, textt1v2, textt1v0}
 
 	return &Model{
 		triangles: []*Triangle{triangle1, triangle2},
@@ -46,20 +48,22 @@ func newXYSquare(size float64, shader Shader) *Model {
 
 	normal := Vector3{x: 0, y: 0, z: 1}
 
-	text0 := []float64{0, 0.999, 0}
-	text1 := []float64{0, 0, 0}
-	text2 := []float64{0.999, 0, 0}
-	text3 := []float64{0.999, 0.999, 0}
+	textt0v0 := []float64{0, 0.999, 0}
+	textt1v0 := []float64{0, 0.999, 0}
+	textt0v1 := []float64{0, 0, 0}
+	textt0v2 := []float64{0.999, 0, 0}
+	textt1v2 := []float64{0.999, 0, 0}
+	textt1v3 := []float64{0.999, 0.999, 0}
 
 	triangle1 := newTriangle()
 	triangle1.worldVerts = t0
 	triangle1.normals = []Vector3{normal, normal, normal}
-	triangle1.uvMapping = [][]float64{text1, text2, text0}
+	triangle1.uvMapping = [][]float64{textt0v1, textt0v2, textt0v0}
 
 	triangle2 := newTriangle()
 	triangle2.worldVerts = t1
 	triangle2.normals = []Vector3{normal, normal, normal}
-	triangle2.uvMapping = [][]float64{text3, text0, text2}
+	triangle2.uvMapping = [][]float64{textt1v3, textt1v0, textt1v2}
 
 	return &Model{
 		triangles: []*Triangle{triangle1, triangle2},
