@@ -13,7 +13,7 @@ type Shader interface {
 type FastImage struct {
 	height float64
 	width  float64
-	data   []float64
+	data   []uint32
 }
 
 func decodeTexture(filename string) image.Image {
@@ -36,18 +36,17 @@ func decodeTexture(filename string) image.Image {
 func convertTexture(t image.Image) *FastImage {
 	height := t.Bounds().Max.Y
 	width := t.Bounds().Max.X
-	data := make([]float64, height*width*4)
+	data := make([]uint32, height*width)
 
 	idx := 0
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			r, g, b, _ := t.At(x, y).RGBA()
-			data[idx] = float64(r) / 256
-			idx++
-			data[idx] = float64(g) / 256
-			idx++
-			data[idx] = float64(b) / 256
-			idx++
+			v := uint32(0)
+			v = uint32(r/256) & 255
+			v |= (uint32(g/256) & 255) << 8
+			v |= (uint32(b/256) & 255) << 16
+			data[idx] = v
 			idx++
 		}
 	}
@@ -94,8 +93,13 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coor
 	l2 := coordinates[2]
 
 	t := triangle
-	p := ponderate(triangle.viewVerts, coordinates[:])
-	p.z = z
+
+	p := Vector3{
+		x: triangle.viewVerts[0].x*coordinates[0] + triangle.viewVerts[1].x*coordinates[1] + triangle.viewVerts[2].x*coordinates[2],
+		y: triangle.viewVerts[0].y*coordinates[0] + triangle.viewVerts[1].y*coordinates[1] + triangle.viewVerts[2].y*coordinates[2],
+		z: z,
+	}
+
 	intensity := 1. / norm(minus(p, scene.projectedLight))
 	intensity += 0.4 // ambient
 
@@ -115,10 +119,12 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coor
 
 		x := int(u*textureShader.texture.width) % int(textureShader.texture.width)
 		y := int(v*textureShader.texture.height) % int(textureShader.texture.height)
-		idx := (x + y*int(textureShader.texture.width)) * 4
-		r := textureShader.texture.data[idx]
-		g := textureShader.texture.data[idx+1]
-		b := textureShader.texture.data[idx+2]
+		idx := (x + y*int(textureShader.texture.width))
+		data := textureShader.texture.data[idx]
+
+		r := float64(data & 255)
+		g := float64((data >> 8) & 255)
+		b := float64((data >> 16) & 255)
 
 		return clampColor(r * intensity), clampColor(g * intensity), clampColor(b * intensity)
 	}
