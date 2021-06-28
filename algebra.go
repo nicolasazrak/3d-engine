@@ -24,14 +24,21 @@ type Vector2 struct {
 }
 
 func boundingBox(pts []Vector2, minx float64, maxx float64, miny float64, maxy float64) (Vector2, Vector2) {
+	ptsminx := math.Min(pts[0].x, math.Min(pts[1].x, pts[2].x))
+	ptsmaxx := math.Max(pts[0].x, math.Max(pts[1].x, pts[2].x))
+
+	ptsminy := math.Min(pts[0].y, math.Min(pts[1].y, pts[2].y))
+	ptsmaxy := math.Max(pts[0].y, math.Max(pts[1].y, pts[2].y))
+
 	min := Vector2{
-		x: math.Max(minx, math.Min(pts[0].x, math.Min(pts[1].x, pts[2].x))),
-		y: math.Max(miny, math.Min(pts[0].y, math.Min(pts[1].y, pts[2].y))),
+		x: math.Max(minx, math.Min(ptsminx, maxx)),
+		y: math.Max(miny, math.Min(ptsminy, maxy)),
 	}
 	max := Vector2{
-		x: math.Min(maxx, math.Max(pts[0].x, math.Max(pts[1].x, pts[2].x))),
-		y: math.Min(maxy, math.Max(pts[0].y, math.Max(pts[1].y, pts[2].y))),
+		x: math.Min(maxx, math.Max(ptsmaxx, minx)),
+		y: math.Min(maxy, math.Max(ptsmaxy, miny)),
 	}
+
 	return min, max
 }
 

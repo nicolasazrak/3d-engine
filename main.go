@@ -42,7 +42,7 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	pts := triangle.viewportVerts
 
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
-	if minbbox.x > maxbbox.x || minbbox.y > maxbbox.y || maxbbox.x < 0 || maxbbox.y < 0 || minbbox.x > scene.fWidth || minbbox.y > scene.fHeight {
+	if minbbox.x >= maxbbox.x || minbbox.y >= maxbbox.y {
 		// pseudo frustrum culling
 		// fmt.Println("bounding box culled")
 		return
