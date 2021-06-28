@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"math"
 	"strconv"
 	"strings"
 
@@ -165,6 +166,34 @@ func (model *Model) scaleUV(u, v float64) *Model {
 		for t := range triangle.uvMapping {
 			triangle.uvMapping[t][0] *= u
 			triangle.uvMapping[t][1] *= v
+		}
+	}
+	return model
+}
+
+func (model *Model) rotateY(v float64) *Model {
+	for _, triangle := range model.triangles {
+		for i := range triangle.worldVerts {
+			x := triangle.worldVerts[i].x
+			y := triangle.worldVerts[i].y
+			z := triangle.worldVerts[i].z
+			triangle.worldVerts[i].x = x*math.Cos(v) + z*math.Sin(v)
+			triangle.worldVerts[i].y = y
+			triangle.worldVerts[i].z = x*-math.Sin(v) + z*math.Cos(v)
+		}
+	}
+	return model
+}
+
+func (model *Model) rotateX(v float64) *Model {
+	for _, triangle := range model.triangles {
+		for i := range triangle.worldVerts {
+			x := triangle.worldVerts[i].x
+			y := triangle.worldVerts[i].y
+			z := triangle.worldVerts[i].z
+			triangle.worldVerts[i].x = x
+			triangle.worldVerts[i].y = y*math.Cos(v) + z*math.Sin(v)
+			triangle.worldVerts[i].z = y*-math.Sin(v) + z*math.Cos(v)
 		}
 	}
 	return model

@@ -251,14 +251,21 @@ func addModels(scene *Scene) {
 	grassTexture := newTextureShader("assets/grass.texture.jpg")
 	brickTexture := newTextureShader("assets/brick.texture.jpg")
 	headTexture := newTextureShader("assets/head.texture.tga")
+	concreteTexture := newTextureShader("assets/concrete.texture.jpeg")
 
-	grass := newXZSquare(4, grassTexture).scale(4, 1, 1).scaleUV(4, 1).moveY(-2)
-	brick := newXYSquare(4, brickTexture).scale(4, 1, 1).scaleUV(4, 1).moveZ(-1)
+	grass := newXZSquare(4, grassTexture).scale(1, 1, 1).scaleUV(2, 1).moveY(-2)
+	ceiling := newXZSquare(4, concreteTexture).rotateX(math.Pi).scale(1, 1, 1).scaleUV(2, 1).moveY(2)
+	leftWall := newXYSquare(4, brickTexture).rotateY(math.Pi/2).scaleUV(4, 1).moveX(-2)
+	rightWall := newXYSquare(4, brickTexture).rotateY(-math.Pi/2).scaleUV(4, 1).moveX(2)
+	backWall := newXYSquare(4, brickTexture).moveZ(-2)
 	head := parseModel("assets/head.obj", headTexture)
 
 	scene.models = append(scene.models, grass)
-	scene.models = append(scene.models, brick)
+	scene.models = append(scene.models, leftWall)
+	scene.models = append(scene.models, rightWall)
 	scene.models = append(scene.models, head)
+	scene.models = append(scene.models, ceiling)
+	scene.models = append(scene.models, backWall)
 }
 
 func takeProfile() func() {
