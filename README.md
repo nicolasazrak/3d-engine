@@ -1,4 +1,13 @@
-### Links
+# Renderer
+
+A simple real-time 3d renderer writen from scratch in go using a frame buffer. 
+
+![screenshot.jpg](screenshot.jpg)
+
+It supports perspective projection using an FPS camera, image textures, z-buffer and lights
+
+
+### Usefull links
 
 - https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/
 - https://www.3dgep.com/understanding-the-view-matrix/
