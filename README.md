@@ -16,3 +16,7 @@ It supports perspective projection using an FPS camera, image textures, z-buffer
 - https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/perspective-correct-interpolation-vertex-attributes
 
 - https://trenki2.github.io/blog/2017/06/15/developing-a-software-renderer-part3/
+- https://github.com/Michaelangel007/game_dev_pdfs
+- http://gameprogrammingpatterns.com/data-locality.html
+- https://www.appentra.com/is-your-algorithm-running-at-peak-performance-the-roofline-model/
+
