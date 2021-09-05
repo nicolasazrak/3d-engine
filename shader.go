@@ -131,6 +131,13 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coor
 }
 
 type LineShader struct {
+	r         uint8
+	g         uint8
+	b         uint8
+	lineR     uint8
+	lineB     uint8
+	lineG     uint8
+	thickness float64
 }
 
 func (shader *LineShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
@@ -138,10 +145,10 @@ func (shader *LineShader) shade(scene *Scene, triangle *Triangle, coordinates [3
 	l1 := coordinates[1]
 	l2 := coordinates[2]
 
-	if l0 < 0.001 || l1 < 0.001 || l2 < 0.001 {
-		return uint8(l0 * 255), uint8(l1 * 255), uint8(l2 * 255)
+	if l0 < shader.thickness || l1 < shader.thickness || l2 < shader.thickness {
+		return uint8(float64(shader.lineR)), uint8(float64(shader.lineB)), uint8(float64(shader.lineB))
 	} else {
-		return 0, 0, 0
+		return shader.r, shader.g, shader.b
 	}
 }
 
