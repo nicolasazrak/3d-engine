@@ -101,12 +101,6 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	}
 }
 
-func (scene *Scene) isFrontFacing(triangle *Triangle) bool {
-	return triangle.viewNormals[0].z >= 0 ||
-		triangle.viewNormals[1].z >= 0 ||
-		triangle.viewNormals[2].z >= 0
-}
-
 func (scene *Scene) isInFrustum(triangle *Triangle) bool {
 	return math.Abs(triangle.viewVerts[0].z) > -scene.camera.nearPlane() ||
 		math.Abs(triangle.viewVerts[1].z) > -scene.camera.nearPlane() ||
@@ -121,7 +115,7 @@ func (scene *Scene) clip(triangle *Triangle) []*Triangle {
 func (scene *Scene) drawModels() {
 	for _, model := range scene.models {
 		for _, triangle := range model.triangles {
-			if scene.isFrontFacing(triangle) && scene.isInFrustum(triangle) {
+			if scene.isInFrustum(triangle) {
 				triangles := scene.clip(triangle)
 				for _, clipped := range triangles {
 					scene.drawTriangle(model, clipped)
