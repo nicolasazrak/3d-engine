@@ -114,12 +114,25 @@ func ponderate(pts []Vector3, weights []float64) Vector3 {
 }
 
 func matmult(m [4][4]float64, vec Vector3, h float64) Vector3 {
+	res := matmult4(m, vec, h)
+	div := 1 / res.w
+	return Vector3{res.x * div, res.y * div, res.z * div}
+}
+
+func matmult4(m [4][4]float64, vec Vector3, h float64) Vector4 {
 	x := m[0][0]*vec.x + m[1][0]*vec.y + m[2][0]*vec.z + m[3][0]*h
 	y := m[0][1]*vec.x + m[1][1]*vec.y + m[2][1]*vec.z + m[3][1]*h
 	z := m[0][2]*vec.x + m[1][2]*vec.y + m[2][2]*vec.z + m[3][2]*h
 	w := m[0][3]*vec.x + m[1][3]*vec.y + m[2][3]*vec.z + m[3][3]*h
-	div := 1 / w
-	return Vector3{x * div, y * div, z * div}
+	return Vector4{x, y, z, w}
+}
+
+func matmult4h(m [4][4]float64, vec Vector4) Vector4 {
+	x := m[0][0]*vec.x + m[1][0]*vec.y + m[2][0]*vec.z + m[3][0]*vec.w
+	y := m[0][1]*vec.x + m[1][1]*vec.y + m[2][1]*vec.z + m[3][1]*vec.w
+	z := m[0][2]*vec.x + m[1][2]*vec.y + m[2][2]*vec.z + m[3][2]*vec.w
+	w := m[0][3]*vec.x + m[1][3]*vec.y + m[2][3]*vec.z + m[3][3]*vec.w
+	return Vector4{x, y, z, w}
 }
 
 func inverseTranspose(dst *[4][4]float64, src [4][4]float64) {

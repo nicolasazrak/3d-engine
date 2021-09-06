@@ -107,8 +107,8 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coor
 		// Shoudln't be needed if there was occulsion culling or shadows ?
 		return 0, 0, 0
 	} else {
-		u := l0*t.uvMappingCorrected[0][0] + l1*t.uvMappingCorrected[1][0] + l2*t.uvMappingCorrected[2][0]
-		v := l0*t.uvMappingCorrected[0][1] + l1*t.uvMappingCorrected[1][1] + l2*t.uvMappingCorrected[2][1]
+		u := l0*t.uvMapping[0][0]*triangle.invViewZ[0] + l1*t.uvMapping[1][0]*triangle.invViewZ[1] + l2*t.uvMapping[2][0]*triangle.invViewZ[2]
+		v := l0*t.uvMapping[0][1]*triangle.invViewZ[0] + l1*t.uvMapping[1][1]*triangle.invViewZ[1] + l2*t.uvMapping[2][1]*triangle.invViewZ[2]
 		u *= z
 		v *= z
 
@@ -198,4 +198,14 @@ func (flatGrayScaleShader *FlatGrayScaleShader) shade(scene *Scene, triangle *Tr
 	} else {
 		return uint8(intensity * 255), uint8(intensity * 255), uint8(intensity * 255)
 	}
+}
+
+type FlatShader struct {
+	r uint8
+	g uint8
+	b uint8
+}
+
+func (shader *FlatShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
+	return uint8(shader.r), uint8(shader.g), uint8(shader.b)
 }

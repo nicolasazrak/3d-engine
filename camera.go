@@ -1,6 +1,8 @@
 package main
 
-import "math"
+import (
+	"math"
+)
 
 type Camera interface {
 	project(scene *Scene)
@@ -10,39 +12,58 @@ type Camera interface {
 	rotate(yaw, pitch float64)
 }
 
+const nearPlane = 0.1
+const farPlane = 10
+const fovX = math.Pi / 2
+const fovY = math.Pi / 2
+
 type LookAtCamera struct {
-	position     Vector3
-	target       Vector3
-	angle        float64
-	viewMatrix   [4][4]float64
-	normalMatrix [4][4]float64
+	position         Vector3
+	target           Vector3
+	angle            float64
+	viewMatrix       [4][4]float64
+	normalMatrix     [4][4]float64
+	projectionMatrix [4][4]float64
 }
 
 type FPSCamera struct {
-	position     Vector3
-	pitch        float64
-	yaw          float64
-	viewMatrix   [4][4]float64
-	normalMatrix [4][4]float64
+	position         Vector3
+	pitch            float64
+	yaw              float64
+	viewMatrix       [4][4]float64
+	normalMatrix     [4][4]float64
+	projectionMatrix [4][4]float64
+}
+
+func buildProjectionMatrix() [4][4]float64 {
+	// http://www.songho.ca/opengl/gl_projectionmatrix.html
+	return [4][4]float64{
+		{1 / math.Tan(fovX/2), 0, 0, 0},
+		{0, 1 / math.Tan(fovY/2), 0, 0},
+		{0, 0, -(farPlane / (farPlane - nearPlane)), -1},
+		{0, 0, -((farPlane * nearPlane) / (farPlane - nearPlane)), 0},
+	}
 }
 
 func newLookAtCamera() Camera {
 	return &LookAtCamera{
-		position:     Vector3{0, 0, 4},
-		target:       Vector3{0, 0, -1},
-		angle:        0,
-		viewMatrix:   [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-		normalMatrix: [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+		position:         Vector3{0, 0, 4},
+		target:           Vector3{0, 0, -1},
+		angle:            0,
+		viewMatrix:       [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+		normalMatrix:     [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+		projectionMatrix: buildProjectionMatrix(),
 	}
 }
 
 func newFPSCamera() Camera {
 	return &FPSCamera{
-		position:     Vector3{0, 0, 4},
-		pitch:        0.,
-		yaw:          0.,
-		viewMatrix:   [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-		normalMatrix: [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+		position:         Vector3{0, 0, 4},
+		pitch:            0.,
+		yaw:              0.,
+		viewMatrix:       [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+		normalMatrix:     [4][4]float64{{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+		projectionMatrix: buildProjectionMatrix(),
 	}
 }
 
@@ -55,11 +76,11 @@ func (cam *LookAtCamera) move(x, y, z float64) {
 }
 
 func (cam *LookAtCamera) farPlane() float64 {
-	return -30.
+	return -farPlane
 }
 
 func (cam *LookAtCamera) nearPlane() float64 {
-	return -.1
+	return -nearPlane
 }
 
 func (cam *LookAtCamera) updateViewMatrix() {
@@ -106,7 +127,7 @@ func (cam *LookAtCamera) project(scene *Scene) {
 	scene.projectedLight = matmult(cam.viewMatrix, scene.lightPosition, 1)
 	for _, model := range scene.models {
 		for _, triangle := range model.triangles {
-			projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix)
+			projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)
 		}
 	}
 }
@@ -118,7 +139,7 @@ func (cam *FPSCamera) project(scene *Scene) {
 	scene.projectedLight = matmult(cam.viewMatrix, scene.lightPosition, 1)
 	for _, model := range scene.models {
 		for _, triangle := range model.triangles {
-			projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix)
+			projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)
 		}
 	}
 }
@@ -178,22 +199,31 @@ func (cam *FPSCamera) updateViewMatrix() {
 
 /** General method */
 
-func projectTriangle(triangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64) {
+func projectTriangle(triangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64) {
+	// https://chaosinmotion.com/2010/09/06/goodbye-far-clipping-plane/
+	triangle.inFrustrum = true
 	for i := 0; i < 3; i++ {
-		res := matmult(viewMatrix, triangle.worldVerts[i], 1)
-		triangle.viewVerts[i].x = res.x
-		triangle.viewVerts[i].y = res.y
-		triangle.viewVerts[i].z = res.z
+		view := matmult4(viewMatrix, triangle.worldVerts[i], 1)
+		triangle.viewVerts[i].x = view.x / view.w
+		triangle.viewVerts[i].y = view.y / view.w
+		triangle.viewVerts[i].z = view.z / view.w
 
-		triangle.viewportVerts[i].x = (triangle.viewVerts[i].x/-res.z + 1.) * width / 2.
-		triangle.viewportVerts[i].y = (triangle.viewVerts[i].y/-res.z + 1.) * height / 2.
+		clip := matmult4h(projectionMatrix, view)
 
-		res2 := matmult(normalMatrix, triangle.normals[i], 1 /* This should be 0. Why do I need to make it 1? */)
+		// TODO add backface culling
+
+		if clip.w <= 0 { // behind camera
+			triangle.inFrustrum = false
+			return
+		}
+
+		ndc := Vector3{x: clip.x / clip.w, y: clip.y / clip.w}
+
+		triangle.viewportVerts[i].x = (ndc.x + 1.) * width * .5
+		triangle.viewportVerts[i].y = (ndc.y + 1.) * height * .5
+
+		res2 := matmult(normalMatrix, triangle.normals[i], 0 /* This should be 0. Why do I need to make it 1? */)
 		triangle.viewNormals[i] = normalize(res2)
-
-		triangle.uvMappingCorrected[i][0] = triangle.uvMapping[i][0] / triangle.viewVerts[i].z
-		triangle.uvMappingCorrected[i][1] = triangle.uvMapping[i][1] / triangle.viewVerts[i].z
-		triangle.uvMappingCorrected[i][2] = triangle.uvMapping[i][2] / triangle.viewVerts[i].z
 
 		triangle.invViewZ[i] = 1 / triangle.viewVerts[i].z
 	}

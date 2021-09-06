@@ -15,26 +15,25 @@ type Model struct {
 }
 
 type Triangle struct {
-	worldVerts         []Vector3 // world space
-	viewVerts          []Vector3 // view space relative to camera
-	viewportVerts      []Vector2 // ndc space relative to viewports [-1,1]
-	normals            []Vector3
-	viewNormals        []Vector3 // view/camera space
-	uvMapping          [][]float64
-	uvMappingCorrected [][]float64
-	invViewZ           []float64
+	worldVerts    []Vector3 // world space
+	viewVerts     []Vector3 // view space relative to camera
+	viewportVerts []Vector2 // ndc space relative to viewports [-1,1]
+	normals       []Vector3
+	viewNormals   []Vector3 // view/camera space
+	inFrustrum    bool
+	uvMapping     [][]float64
+	invViewZ      []float64
 }
 
 func newTriangle() *Triangle {
 	return &Triangle{
-		worldVerts:         []Vector3{{}, {}, {}},
-		normals:            []Vector3{{}, {}, {}},
-		viewportVerts:      []Vector2{{}, {}, {}},
-		uvMapping:          [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-		uvMappingCorrected: [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-		invViewZ:           []float64{0, 0, 0},
-		viewVerts:          []Vector3{{}, {}, {}},
-		viewNormals:        []Vector3{{}, {}, {}},
+		worldVerts:    []Vector3{{}, {}, {}},
+		normals:       []Vector3{{}, {}, {}},
+		viewportVerts: []Vector2{{}, {}, {}},
+		uvMapping:     [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+		invViewZ:      []float64{0, 0, 0},
+		viewVerts:     []Vector3{{}, {}, {}},
+		viewNormals:   []Vector3{{}, {}, {}},
 	}
 }
 
@@ -194,6 +193,21 @@ func (model *Model) rotateX(v float64) *Model {
 			triangle.worldVerts[i].x = x
 			triangle.worldVerts[i].y = y*math.Cos(v) + z*math.Sin(v)
 			triangle.worldVerts[i].z = y*-math.Sin(v) + z*math.Cos(v)
+		}
+	}
+	return model
+}
+
+func (model *Model) rotateZ(v float64) *Model {
+	for _, triangle := range model.triangles {
+		for i := range triangle.worldVerts {
+			x := triangle.worldVerts[i].x
+			y := triangle.worldVerts[i].y
+			z := triangle.worldVerts[i].z
+			// TODO check this?
+			triangle.worldVerts[i].x = y*-math.Sin(v) + x*math.Cos(v)
+			triangle.worldVerts[i].y = y*math.Cos(v) + x*math.Sin(v)
+			triangle.worldVerts[i].z = z
 		}
 	}
 	return model

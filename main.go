@@ -68,10 +68,11 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 				l1 := float64(w1) * area
 				l2 := float64(w2) * area
 
+				// Should the z-buffer use the ndc value ??
 				zPos := 1 / (l0*triangle.invViewZ[0] + l1*triangle.invViewZ[1] + l2*triangle.invViewZ[2])
 				idx := int(x) + (int(y))*scene.width
 
-				if zPos > scene.camera.farPlane() && zPos < scene.camera.nearPlane() && zPos > scene.zBuffer[idx] {
+				if zPos > scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
 					r, g, b := model.shader.shade(scene, triangle, [3]float64{l0, l1, l2}, zPos)
 					scene.setAt(int(x), int(y), r, g, b)
@@ -81,25 +82,11 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 	}
 }
 
-func (scene *Scene) isInFrustum(triangle *Triangle) bool {
-	return math.Abs(triangle.viewVerts[0].z) > -scene.camera.nearPlane() ||
-		math.Abs(triangle.viewVerts[1].z) > -scene.camera.nearPlane() ||
-		math.Abs(triangle.viewVerts[2].z) > -scene.camera.nearPlane()
-}
-
-func (scene *Scene) clip(triangle *Triangle) []*Triangle {
-	// TODO
-	return []*Triangle{triangle}
-}
-
 func (scene *Scene) drawModels() {
 	for _, model := range scene.models {
 		for _, triangle := range model.triangles {
-			if scene.isInFrustum(triangle) {
-				triangles := scene.clip(triangle)
-				for _, clipped := range triangles {
-					scene.drawTriangle(model, clipped)
-				}
+			if triangle.inFrustrum {
+				scene.drawTriangle(model, triangle)
 			}
 		}
 	}
@@ -147,7 +134,7 @@ func (scene *Scene) render() *image.RGBA {
 
 func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 	moveSpeed := scene.lastElapsedMillis * 0.003
-	rotationSpeed := scene.lastElapsedMillis * 0.001
+	rotationSpeed := scene.lastElapsedMillis * 0.0025
 
 	for key := range pressedKeys {
 		if key == "KeyD" {
@@ -161,6 +148,12 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 		}
 		if key == "KeyS" {
 			scene.camera.move(0, 0, moveSpeed)
+		}
+		if key == "KeyQ" {
+			scene.camera.move(0, -moveSpeed, 0)
+		}
+		if key == "KeyE" {
+			scene.camera.move(0, moveSpeed, 0)
 		}
 		if key == "ArrowUp" {
 			scene.camera.rotate(0, rotationSpeed)
@@ -222,25 +215,62 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 }
 
 func addModels(scene *Scene) {
-	brickTexture := newTextureShader("assets/brick.texture.jpg")
-	backWall := newXYSquare(4, brickTexture).moveZ(-2)
-	scene.models = append(scene.models, backWall)
-
 	grassTexture := newTextureShader("assets/grass.texture.jpg")
 	headTexture := newTextureShader("assets/head.texture.tga")
 	concreteTexture := newTextureShader("assets/concrete.texture.jpeg")
+	brickTexture := newTextureShader("assets/brick.texture.jpg")
 
 	grass := newXZSquare(4, grassTexture).scale(1, 1, 1).scaleUV(2, 1).moveY(-2)
 	ceiling := newXZSquare(4, concreteTexture).rotateX(math.Pi).scale(1, 1, 1).scaleUV(2, 1).moveY(2)
 	leftWall := newXYSquare(4, brickTexture).rotateY(math.Pi/2).scaleUV(4, 1).moveX(-2)
 	rightWall := newXYSquare(4, brickTexture).rotateY(-math.Pi/2).scaleUV(4, 1).moveX(2)
 	head := parseModel("assets/head.obj", headTexture)
+	backWall := newXYSquare(4, brickTexture).moveZ(-2)
 
-	scene.models = append(scene.models, grass)
-	scene.models = append(scene.models, leftWall)
-	scene.models = append(scene.models, rightWall)
-	scene.models = append(scene.models, head)
-	scene.models = append(scene.models, ceiling)
+	if false {
+		scene.models = append(scene.models, grass)
+		scene.models = append(scene.models, leftWall)
+		scene.models = append(scene.models, rightWall)
+		scene.models = append(scene.models, head)
+		scene.models = append(scene.models, ceiling)
+		scene.models = append(scene.models, backWall)
+	}
+
+	red := &LineShader{170, 30, 30, 255, 255, 255, 0.01}
+	blue := &LineShader{30, 30, 130, 255, 255, 255, 0.01}
+	green := &LineShader{30, 143, 23, 255, 255, 255, 0.01}
+	purple := &LineShader{114, 48, 191, 255, 255, 255, 0.01}
+	grey := &FlatShader{100, 100, 100}
+
+	scenario := []string{
+		"XXXXXXXXXXXXXXXXXXXXXXXXX",
+		"X          B     R      X",
+		"X          B     R      X",
+		"XRRRRRR    B     RRR    X ",
+		"X          B            X",
+		"X          B            X",
+		"X     BBBBBB            X",
+		"X                 G     X",
+		"X                 G     X",
+		"X  G       G      G     X",
+		"XXXXXXXXXXXXXXXXXXXXXXXXX",
+	}
+
+	for y, line := range scenario {
+		for x, color := range line {
+			if color == 'X' {
+				scene.models = append(scene.models, newCube(1, purple).moveX(float64(14-x)).moveZ(float64(6-y)))
+			} else if color == 'G' {
+				scene.models = append(scene.models, newCube(1, green).moveX(float64(14-x)).moveZ(float64(6-y)))
+			} else if color == 'B' {
+				scene.models = append(scene.models, newCube(1, blue).moveX(float64(14-x)).moveZ(float64(6-y)))
+			} else if color == 'R' {
+				scene.models = append(scene.models, newCube(1, red).moveX(float64(14-x)).moveZ(float64(6-y)))
+			}
+
+			scene.models = append(scene.models, newCube(1, grey).moveX(float64(14-x)).moveZ(float64(6-y)).moveY(-1.))
+		}
+	}
 }
 
 func takeProfile() func() {

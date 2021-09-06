@@ -15,6 +15,7 @@ It supports perspective projection using an FPS camera, image textures, z-buffer
 - https://www.reedbeta.com/blog/quadrilateral-interpolation-part-1/
 - https://math.stackexchange.com/questions/13404/mapping-irregular-quadrilateral-to-a-rectangle
 - https://www.scratchapixel.com/lessons/3d-basic-rendering/rasterization-practical-implementation/perspective-correct-interpolation-vertex-attributes
+- https://machinethink.net/blog/3d-rendering-without-shaders/
 
 - https://trenki2.github.io/blog/2017/06/15/developing-a-software-renderer-part3/
 - https://github.com/Michaelangel007/game_dev_pdfs
