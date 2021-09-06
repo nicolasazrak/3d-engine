@@ -6,14 +6,12 @@ import (
 
 type Camera interface {
 	project(scene *Scene)
-	nearPlane() float64
-	farPlane() float64
 	move(x, y, z float64)
 	rotate(yaw, pitch float64)
 }
 
 const nearPlane = 0.1
-const farPlane = 10
+const farPlane = 50
 const fovX = math.Pi / 2
 const fovY = math.Pi / 2
 
@@ -75,14 +73,6 @@ func (cam *LookAtCamera) move(x, y, z float64) {
 	cam.position.z += z
 }
 
-func (cam *LookAtCamera) farPlane() float64 {
-	return -farPlane
-}
-
-func (cam *LookAtCamera) nearPlane() float64 {
-	return -nearPlane
-}
-
 func (cam *LookAtCamera) updateViewMatrix() {
 	// https://www.3dgep.com/understanding-the-view-matrix/
 	// Look at camera
@@ -126,9 +116,11 @@ func (cam *LookAtCamera) project(scene *Scene) {
 	cam.updateViewMatrix()
 	scene.projectedLight = matmult(cam.viewMatrix, scene.lightPosition, 1)
 	for _, model := range scene.models {
+		projection := []*ProjectedTriangle{}
 		for _, triangle := range model.triangles {
-			projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)
+			projection = append(projection, projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)...)
 		}
+		model.projection = projection
 	}
 }
 
@@ -138,18 +130,11 @@ func (cam *FPSCamera) project(scene *Scene) {
 	cam.updateViewMatrix()
 	scene.projectedLight = matmult(cam.viewMatrix, scene.lightPosition, 1)
 	for _, model := range scene.models {
+		model.projection = []*ProjectedTriangle{}
 		for _, triangle := range model.triangles {
-			projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)
+			model.projection = append(model.projection, projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)...)
 		}
 	}
-}
-
-func (cam *FPSCamera) nearPlane() float64 {
-	return -.5
-}
-
-func (cam *FPSCamera) farPlane() float64 {
-	return -30
 }
 
 func (cam *FPSCamera) move(x, y, z float64) {
@@ -199,32 +184,77 @@ func (cam *FPSCamera) updateViewMatrix() {
 
 /** General method */
 
-func projectTriangle(triangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64) {
-	// https://chaosinmotion.com/2010/09/06/goodbye-far-clipping-plane/
-	triangle.inFrustrum = true
+func projectTriangle(triangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64) []*ProjectedTriangle {
+	initialTriangle := newProjectedTriangle()
+
 	for i := 0; i < 3; i++ {
 		view := matmult4(viewMatrix, triangle.worldVerts[i], 1)
-		triangle.viewVerts[i].x = view.x / view.w
-		triangle.viewVerts[i].y = view.y / view.w
-		triangle.viewVerts[i].z = view.z / view.w
-
 		clip := matmult4h(projectionMatrix, view)
 
-		// TODO add backface culling
-
-		if clip.w <= 0 { // behind camera
-			triangle.inFrustrum = false
-			return
-		}
+		initialTriangle.clipVertex[i] = clip
+		initialTriangle.viewVerts[i].x = view.x / view.w
+		initialTriangle.viewVerts[i].y = view.y / view.w
+		initialTriangle.viewVerts[i].z = view.z / view.w
 
 		ndc := Vector3{x: clip.x / clip.w, y: clip.y / clip.w}
 
-		triangle.viewportVerts[i].x = (ndc.x + 1.) * width * .5
-		triangle.viewportVerts[i].y = (ndc.y + 1.) * height * .5
+		initialTriangle.viewportVerts[i].x = (ndc.x + 1.) * width * .5
+		initialTriangle.viewportVerts[i].y = (ndc.y + 1.) * height * .5
 
 		res2 := matmult(normalMatrix, triangle.normals[i], 0 /* This should be 0. Why do I need to make it 1? */)
-		triangle.viewNormals[i] = normalize(res2)
+		initialTriangle.viewNormals[i] = normalize(res2)
 
-		triangle.invViewZ[i] = 1 / triangle.viewVerts[i].z
+		initialTriangle.invViewZ[i] = 1 / initialTriangle.viewVerts[i].z
 	}
+
+	return clipTriangle(initialTriangle, []*ProjectedTriangle{})
+}
+
+func clipTriangle(triangle *ProjectedTriangle, projection []*ProjectedTriangle) []*ProjectedTriangle {
+	// TODO
+
+	clip := triangle.clipVertex
+
+	if inFrustrum(clip[0]) {
+		if inFrustrum(clip[1]) {
+			if inFrustrum(clip[2]) {
+				projection = append(projection, triangle)
+			} else {
+				// t1, t2 := split(triangle, 0, 2, 1)
+				// projection = clipTriangle(t1, projection)
+				// projection = clipTriangle(t2, projection)
+			}
+		} else {
+			// t1, t2 := split(triangle, 0, 1, 2)
+			// projection = clipTriangle(t1, projection)
+			// projection = clipTriangle(t2, projection)
+		}
+	} else {
+		if inFrustrum(clip[1]) {
+			// t1, t2 := split(triangle, 1, 0, 2)
+			// projection = clipTriangle(t1, projection)
+			// projection = clipTriangle(t2, projection)
+		} else {
+			if inFrustrum(clip[2]) {
+				// t1, t2 := split(triangle, 2, 0, 1)
+				// projection = clipTriangle(t1, projection)
+				// projection = clipTriangle(t2, projection)
+			}
+		}
+	}
+
+	return projection
+}
+
+func split(triangle *ProjectedTriangle, insideIdx, outsideIdx, otherIdx int) (*ProjectedTriangle, *ProjectedTriangle) {
+	// TODO
+	return triangle, nil
+}
+
+func inFrustrum(clipVertex Vector4) bool {
+	return clipVertex.z < clipVertex.w && clipVertex.z > 0
+	// TODO
+	// return clipVertex.x < clipVertex.w && clipVertex.x > -clipVertex.w &&
+	// 	clipVertex.y < clipVertex.w && clipVertex.y > -clipVertex.w &&
+	// 	clipVertex.z < clipVertex.w && clipVertex.z > 0
 }

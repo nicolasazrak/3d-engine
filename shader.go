@@ -7,7 +7,7 @@ import (
 )
 
 type Shader interface {
-	shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8)
+	shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8)
 }
 
 type FastImage struct {
@@ -87,7 +87,7 @@ func clampColor(a float64) uint8 {
 	return uint8(a)
 }
 
-func (textureShader *TextureShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
+func (textureShader *TextureShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
 	l0 := coordinates[0]
 	l1 := coordinates[1]
 	l2 := coordinates[2]
@@ -140,7 +140,7 @@ type LineShader struct {
 	thickness float64
 }
 
-func (shader *LineShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
+func (shader *LineShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
 	l0 := coordinates[0]
 	l1 := coordinates[1]
 	l2 := coordinates[2]
@@ -169,7 +169,7 @@ type SmoothColorShader struct {
 	b float64
 }
 
-func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
+func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
 	p := ponderate(triangle.viewVerts, coordinates[:])
 	normal := ponderate(triangle.viewNormals, coordinates[:])
 	lightNormal := normalize(minus(scene.projectedLight, p))
@@ -186,7 +186,7 @@ func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *Triangle, co
 type FlatGrayScaleShader struct {
 }
 
-func (flatGrayScaleShader *FlatGrayScaleShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
+func (flatGrayScaleShader *FlatGrayScaleShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
 	p := triangle.viewVerts[0]
 	normal := triangle.viewNormals[0]
 	lightNormal := normalize(minus(scene.projectedLight, p))
@@ -206,6 +206,6 @@ type FlatShader struct {
 	b uint8
 }
 
-func (shader *FlatShader) shade(scene *Scene, triangle *Triangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
+func (shader *FlatShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
 	return uint8(shader.r), uint8(shader.g), uint8(shader.b)
 }

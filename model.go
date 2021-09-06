@@ -10,30 +10,42 @@ import (
 )
 
 type Model struct {
-	triangles []*Triangle
-	shader    Shader
+	triangles  []*Triangle
+	projection []*ProjectedTriangle
+	shader     Shader
 }
 
 type Triangle struct {
-	worldVerts    []Vector3 // world space
+	worldVerts []Vector3 // world space
+	normals    []Vector3
+	uvMapping  [][]float64
+}
+
+type ProjectedTriangle struct {
 	viewVerts     []Vector3 // view space relative to camera
-	viewportVerts []Vector2 // ndc space relative to viewports [-1,1]
-	normals       []Vector3
+	viewportVerts []Vector2
+	clipVertex    []Vector4
 	viewNormals   []Vector3 // view/camera space
-	inFrustrum    bool
 	uvMapping     [][]float64
 	invViewZ      []float64
 }
 
 func newTriangle() *Triangle {
 	return &Triangle{
-		worldVerts:    []Vector3{{}, {}, {}},
-		normals:       []Vector3{{}, {}, {}},
-		viewportVerts: []Vector2{{}, {}, {}},
-		uvMapping:     [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-		invViewZ:      []float64{0, 0, 0},
+		worldVerts: []Vector3{{}, {}, {}},
+		normals:    []Vector3{{}, {}, {}},
+		uvMapping:  [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+	}
+}
+
+func newProjectedTriangle() *ProjectedTriangle {
+	return &ProjectedTriangle{
 		viewVerts:     []Vector3{{}, {}, {}},
 		viewNormals:   []Vector3{{}, {}, {}},
+		viewportVerts: []Vector2{{}, {}, {}},
+		clipVertex:    []Vector4{{}, {}, {}},
+		uvMapping:     [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
+		invViewZ:      []float64{0, 0, 0},
 	}
 }
 

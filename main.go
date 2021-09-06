@@ -38,7 +38,7 @@ type Scene struct {
 	lastFrame         time.Time
 }
 
-func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
+func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 	pts := triangle.viewportVerts
 
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
@@ -84,10 +84,8 @@ func (scene *Scene) drawTriangle(model *Model, triangle *Triangle) {
 
 func (scene *Scene) drawModels() {
 	for _, model := range scene.models {
-		for _, triangle := range model.triangles {
-			if triangle.inFrustrum {
-				scene.drawTriangle(model, triangle)
-			}
+		for _, triangle := range model.projection {
+			scene.drawTriangle(model, triangle)
 		}
 	}
 }
