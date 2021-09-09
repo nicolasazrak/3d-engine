@@ -6,8 +6,10 @@ import (
 
 type Camera interface {
 	project(scene *Scene)
-	move(x, y, z float64)
+	move(move Vector3)
 	rotate(yaw, pitch float64)
+	transformInput(inputMove Vector3) Vector3
+	getPosition() Vector3
 }
 
 type LookAtCamera struct {
@@ -85,10 +87,10 @@ func newFPSCamera() Camera {
 
 /** Look at camera */
 
-func (cam *LookAtCamera) move(x, y, z float64) {
-	cam.position.x += x
-	cam.position.y += y
-	cam.position.z += z
+func (cam *LookAtCamera) move(move Vector3) {
+	cam.position.x += move.x
+	cam.position.y += move.y
+	cam.position.z += move.z
 }
 
 func (cam *LookAtCamera) updateViewMatrix() {
@@ -130,6 +132,14 @@ func (cam *LookAtCamera) rotate(yaw, pitch float64) {
 	// Not supported...
 }
 
+func (cam *LookAtCamera) getPosition() Vector3 {
+	return cam.position
+}
+
+func (cam *LookAtCamera) transformInput(inputMove Vector3) Vector3 {
+	return inputMove
+}
+
 func (cam *LookAtCamera) project(scene *Scene) {
 	cam.updateViewMatrix()
 	scene.projectedLight = matmult(cam.viewMatrix, scene.lightPosition, 1)
@@ -155,10 +165,18 @@ func (cam *FPSCamera) project(scene *Scene) {
 	}
 }
 
-func (cam *FPSCamera) move(x, y, z float64) {
-	cam.position.x += z*math.Sin(cam.yaw) + x*math.Sin(cam.yaw+math.Pi/2)
-	cam.position.y += y
-	cam.position.z += z*math.Cos(cam.yaw) + x*math.Cos(cam.yaw+math.Pi/2)
+func (cam *FPSCamera) transformInput(inputMove Vector3) Vector3 {
+	return Vector3{
+		x: inputMove.z*math.Sin(cam.yaw) + inputMove.x*math.Sin(cam.yaw+math.Pi/2),
+		y: inputMove.y,
+		z: inputMove.z*math.Cos(cam.yaw) + inputMove.x*math.Cos(cam.yaw+math.Pi/2),
+	}
+}
+
+func (cam *FPSCamera) move(move Vector3) {
+	cam.position.x += move.x
+	cam.position.y += move.y
+	cam.position.z += move.z
 }
 
 func (cam *FPSCamera) rotate(yaw, pitch float64) {
@@ -198,6 +216,10 @@ func (cam *FPSCamera) updateViewMatrix() {
 	cam.viewMatrix[3][3] = 1
 
 	inverseTranspose(&cam.normalMatrix, cam.viewMatrix)
+}
+
+func (cam *FPSCamera) getPosition() Vector3 {
+	return cam.position
 }
 
 /** General method */

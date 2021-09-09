@@ -30,6 +30,7 @@ type Scene struct {
 	projectedLight Vector3
 	camera         Camera
 	models         []*Model
+	obstacles      []Collisionable
 
 	// frame stats
 	t                 float64
@@ -48,14 +49,12 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 	if minbbox.x >= maxbbox.x || minbbox.y >= maxbbox.y {
 		// pseudo frustrum culling
-		// fmt.Println("bounding box culled")
 		return
 	}
 
 	area := 1. / float64(orient2d(pts[0], pts[1], pts[2].x, pts[2].y))
 	if area <= 0 {
 		// pseudo backface culling
-		// fmt.Println("wrong orientation")
 		return
 	}
 
@@ -138,24 +137,27 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 	moveSpeed := scene.lastElapsedMillis * 0.003
 	rotationSpeed := scene.lastElapsedMillis * 0.0025
 
+	position := scene.camera.getPosition()
+	mov := Vector3{}
+
 	for key := range pressedKeys {
 		if key == "KeyD" {
-			scene.camera.move(moveSpeed, 0, 0)
+			mov.x += moveSpeed
 		}
 		if key == "KeyA" {
-			scene.camera.move(-moveSpeed, 0, 0)
+			mov.x -= moveSpeed
 		}
 		if key == "KeyW" {
-			scene.camera.move(0, 0, -moveSpeed)
+			mov.z -= moveSpeed
 		}
 		if key == "KeyS" {
-			scene.camera.move(0, 0, moveSpeed)
+			mov.z += moveSpeed
 		}
 		if key == "KeyQ" {
-			scene.camera.move(0, -moveSpeed, 0)
+			mov.y -= moveSpeed
 		}
 		if key == "KeyE" {
-			scene.camera.move(0, moveSpeed, 0)
+			mov.y += moveSpeed
 		}
 		if key == "ArrowUp" {
 			scene.camera.rotate(0, rotationSpeed)
@@ -170,6 +172,35 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 			scene.camera.rotate(-rotationSpeed, 0)
 		}
 	}
+
+	mov = scene.camera.transformInput(mov)
+
+	collided := true
+	for collided {
+		collided = false
+		minD := 999999.
+		newNorm := Vector3{}
+		dst := plus(mov, position)
+
+		for _, obstacle := range scene.obstacles {
+			c, norm, d := obstacle.test(position, dst, mov)
+			if c && d < minD {
+				minD = d
+				newNorm = norm
+				collided = true
+			}
+		}
+
+		if collided {
+			mov = Vector3{
+				x: mov.x - math.Abs(newNorm.x)*mov.x,
+				y: mov.y - math.Abs(newNorm.y)*mov.y,
+				z: mov.z - math.Abs(newNorm.z)*mov.z,
+			}
+		}
+	}
+
+	scene.camera.move(mov)
 }
 
 func (scene *Scene) processFrame(pressedKeys map[string]bool) {
@@ -187,6 +218,7 @@ func (scene *Scene) processFrame(pressedKeys map[string]bool) {
 func newScene(width int, height int, scaleFactor int) *Scene {
 	scene := Scene{
 		models:        []*Model{},
+		obstacles:     []Collisionable{},
 		zBuffer:       []float64{},
 		pixBuffer:     []uint8{},
 		scaleFactor:   scaleFactor,
@@ -260,14 +292,21 @@ func addModels(scene *Scene) {
 
 	for y, line := range scenario {
 		for x, color := range line {
+			var model *Model = nil
+
 			if color == 'X' {
-				scene.models = append(scene.models, newCube(1, purple).moveX(float64(14-x)).moveZ(float64(6-y)))
+				model = newCube(1, purple).moveX(float64(14 - x)).moveZ(float64(6 - y))
 			} else if color == 'G' {
-				scene.models = append(scene.models, newCube(1, green).moveX(float64(14-x)).moveZ(float64(6-y)))
+				model = newCube(1, green).moveX(float64(14 - x)).moveZ(float64(6 - y))
 			} else if color == 'B' {
-				scene.models = append(scene.models, newCube(1, blue).moveX(float64(14-x)).moveZ(float64(6-y)))
+				model = newCube(1, blue).moveX(float64(14 - x)).moveZ(float64(6 - y))
 			} else if color == 'R' {
-				scene.models = append(scene.models, newCube(1, red).moveX(float64(14-x)).moveZ(float64(6-y)))
+				model = newCube(1, red).moveX(float64(14 - x)).moveZ(float64(6 - y))
+			}
+
+			if model != nil {
+				scene.models = append(scene.models, model)
+				scene.obstacles = append(scene.obstacles, newCollisionableFromModel(model))
 			}
 
 			scene.models = append(scene.models, newCube(1, grey).moveX(float64(14-x)).moveZ(float64(6-y)).moveY(-1.))
@@ -293,7 +332,7 @@ func main() {
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 4)
+	scene := newScene(cv.Width(), cv.Height(), 8)
 	addModels(scene)
 
 	// endProfile := takeProfile()
