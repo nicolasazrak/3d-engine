@@ -208,7 +208,7 @@ func projectTriangle(originalTriangle *Triangle, width float64, height float64, 
 	for i := 0; i < 3; i++ {
 		view := matmult4(viewMatrix, originalTriangle.worldVerts[i], 1)
 		clip := matmult4h(projectionMatrix, view)
-		normal := matmult(normalMatrix, originalTriangle.normals[i], 0 /* This should be 0. Why do I need to make it 1? */)
+		normal := matmult(normalMatrix, originalTriangle.normals[i], 1 /* This should be 0. Why do I need to make it 1? */)
 
 		projection.clipVertex[i] = clip
 		projection.viewVerts[i].x = view.x / view.w
