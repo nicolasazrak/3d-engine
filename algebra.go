@@ -137,6 +137,14 @@ func ponderateVec4(vec1 Vector4, vec2 Vector4, t float64) Vector4 {
 	}
 }
 
+func ponderateUv(slice1 []float64, slice2 []float64, t float64) []float64 {
+	return []float64{
+		slice1[0]*t + (1-t)*slice2[0],
+		slice1[1]*t + (1-t)*slice2[1],
+		slice1[2]*t + (1-t)*slice2[2],
+	}
+}
+
 func matmult(m [4][4]float64, vec Vector3, h float64) Vector3 {
 	res := matmult4(m, vec, h)
 	div := 1 / res.w

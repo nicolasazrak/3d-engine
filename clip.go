@@ -113,7 +113,11 @@ func clipTriangleWithOneVertexInside(triangle *ProjectedTriangle, planeToClip in
 			ponderateVec3(triangle.viewNormals[otherIdx], triangle.viewNormals[insideVertex], t2),
 			triangle.viewNormals[insideVertex],
 		},
-		uvMapping: [][]float64{},
+		uvMapping: [][]float64{
+			ponderateUv(triangle.uvMapping[nextIdx], triangle.uvMapping[insideVertex], t1),
+			ponderateUv(triangle.uvMapping[otherIdx], triangle.uvMapping[insideVertex], t2),
+			triangle.uvMapping[insideVertex],
+		},
 	}
 }
 
@@ -126,6 +130,7 @@ func clipTriangleWithTwoVertexInside(triangle *ProjectedTriangle, planeToClip in
 	newVewVert := ponderateVec3(triangle.viewVerts[nextIdx], triangle.viewVerts[outsideVertex], t1)
 	newClipVert := ponderateVec4(triangle.clipVertex[nextIdx], triangle.clipVertex[outsideVertex], t1)
 	newViewNormal := ponderateVec3(triangle.viewNormals[nextIdx], triangle.viewNormals[outsideVertex], t1)
+	newUvMapping := ponderateUv(triangle.uvMapping[nextIdx], triangle.uvMapping[outsideVertex], t1)
 
 	triangle1 := ProjectedTriangle{
 		viewVerts: []Vector3{
@@ -143,7 +148,11 @@ func clipTriangleWithTwoVertexInside(triangle *ProjectedTriangle, planeToClip in
 			triangle.viewNormals[nextIdx],
 			triangle.viewNormals[otherIdx],
 		},
-		uvMapping: [][]float64{},
+		uvMapping: [][]float64{
+			newUvMapping,
+			triangle.uvMapping[nextIdx],
+			triangle.uvMapping[otherIdx],
+		},
 	}
 	triangle2 := ProjectedTriangle{
 		viewVerts: []Vector3{
@@ -161,7 +170,11 @@ func clipTriangleWithTwoVertexInside(triangle *ProjectedTriangle, planeToClip in
 			newViewNormal,
 			triangle.viewNormals[otherIdx],
 		},
-		uvMapping: [][]float64{},
+		uvMapping: [][]float64{
+			ponderateUv(triangle.uvMapping[otherIdx], triangle.uvMapping[outsideVertex], t2),
+			newUvMapping,
+			triangle.uvMapping[otherIdx],
+		},
 	}
 
 	return &triangle1, &triangle2

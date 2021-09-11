@@ -215,6 +215,7 @@ func projectTriangle(originalTriangle *Triangle, width float64, height float64, 
 		projection.viewVerts[i].y = view.y / view.w
 		projection.viewVerts[i].z = view.z / view.w
 		projection.viewNormals[i] = normalize(normal)
+		projection.uvMapping = originalTriangle.uvMapping
 	}
 
 	return clipTriangle(projection)
