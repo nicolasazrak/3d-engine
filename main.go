@@ -173,6 +173,9 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 		}
 	}
 
+	lightMove := scene.camera.transformInput(Vector3{0, 0, -1})
+	scene.lightPosition = plus(position, lightMove)
+
 	mov = scene.camera.transformInput(mov)
 
 	collided := true
@@ -270,24 +273,27 @@ func addModels(scene *Scene) {
 		scene.models = append(scene.models, backWall)
 	}
 
-	red := &LineShader{170, 30, 30, 255, 255, 255, 0.01}
-	blue := &LineShader{30, 30, 130, 255, 255, 255, 0.01}
-	green := &LineShader{30, 143, 23, 255, 255, 255, 0.01}
-	purple := &LineShader{114, 48, 191, 255, 255, 255, 0.01}
+	red := &SmoothColorShader{170, 30, 30}
+	blue := &SmoothColorShader{30, 30, 130}
+	green := &SmoothColorShader{30, 143, 23}
+	purple := &SmoothColorShader{114, 48, 191}
 	grey := &FlatShader{100, 100, 100}
 
 	scenario := []string{
-		"XXXXXXXXXXXXXXXXXXXXXXXXX",
+		"XXXXXXXXXXXXXXXXXXXXXXXXXX",
 		"X          B     R      X",
 		"X          B     R      X",
-		"XRRRRRR    B     RRR    X ",
+		"XRRRRRR    B     RRRR   X",
 		"X          B            X",
-		"X          B            X",
-		"X     BBBBBB            X",
-		"X                 G     X",
-		"X                 G     X",
-		"X  G       G      G     X",
-		"XXXXXXXXXXXXXXXXXXXXXXXXX",
+		" X         BBBBBBBBBB   X",
+		" X         B            X",
+		" X    BBBBBB      G    X",
+		" X                G    X",
+		" X                G    X",
+		" X    RRRRRGGGGGGGG    X",
+		"X          G           X",
+		"X          G           X",
+		"XXXXXXXXXXXXXXXXXXXXXXXX",
 	}
 
 	for y, line := range scenario {
@@ -326,17 +332,21 @@ func takeProfile() func() {
 }
 
 func main() {
-	wnd, cv, err := sdlcanvas.CreateWindow(1024, 1024, "Hello")
+	wnd, cv, err := sdlcanvas.CreateWindow(640, 480, "Hello")
 	if err != nil {
 		panic(err)
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 8)
+	scene := newScene(cv.Width(), cv.Height(), 4)
 	addModels(scene)
 
-	// endProfile := takeProfile()
-	// defer endProfile()
+	f, err := os.Create("cpu")
+	if err != nil {
+		panic(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
 
 	pressedKeys := map[string]bool{}
 	wnd.KeyDown = func(scancode int, rn rune, name string) {

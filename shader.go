@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"image"
+	"math"
 	"os"
 )
 
@@ -170,10 +171,15 @@ type SmoothColorShader struct {
 }
 
 func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
-	p := ponderate(triangle.viewVerts, coordinates[:])
-	normal := ponderate(triangle.viewNormals, coordinates[:])
-	lightNormal := normalize(minus(scene.projectedLight, p))
-	intensity := dotProduct(lightNormal, normal)
+	p := Vector3{
+		x: triangle.viewVerts[0].x*coordinates[0] + triangle.viewVerts[1].x*coordinates[1] + triangle.viewVerts[2].x*coordinates[2],
+		y: triangle.viewVerts[0].y*coordinates[0] + triangle.viewVerts[1].y*coordinates[1] + triangle.viewVerts[2].y*coordinates[2],
+		z: z,
+	}
+
+	intensity := 1. / (norm(minus(p, scene.projectedLight)))
+	intensity += 0.001 // ambient
+	intensity = math.Min(intensity, 1)
 
 	if intensity < 0 {
 		// Shoudln't be needed if there was occulsion culling or shadows ?

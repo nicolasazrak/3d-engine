@@ -240,5 +240,6 @@ func projectTriangle(originalTriangle *Triangle, width float64, height float64, 
 		projection.uvMapping = originalTriangle.uvMapping
 	}
 
+	// TODO add backface culling
 	return clipTriangle(projection)
 }
