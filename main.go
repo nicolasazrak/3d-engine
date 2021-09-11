@@ -39,7 +39,11 @@ type Scene struct {
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
-	pts := triangle.viewportVerts
+	pts := []Vector2{
+		{((triangle.clipVertex[0].x / triangle.clipVertex[0].w) + 1) * scene.fWidth * 0.5, ((triangle.clipVertex[0].y / triangle.clipVertex[0].w) + 1) * scene.fHeight * 0.5},
+		{((triangle.clipVertex[1].x / triangle.clipVertex[1].w) + 1) * scene.fWidth * 0.5, ((triangle.clipVertex[1].y / triangle.clipVertex[1].w) + 1) * scene.fHeight * 0.5},
+		{((triangle.clipVertex[2].x / triangle.clipVertex[2].w) + 1) * scene.fWidth * 0.5, ((triangle.clipVertex[2].y / triangle.clipVertex[2].w) + 1) * scene.fHeight * 0.5},
+	}
 
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 	if minbbox.x >= maxbbox.x || minbbox.y >= maxbbox.y {
@@ -69,7 +73,7 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 				l2 := float64(w2) * area
 
 				// Should the z-buffer use the ndc value ??
-				zPos := 1 / (l0*triangle.invViewZ[0] + l1*triangle.invViewZ[1] + l2*triangle.invViewZ[2])
+				zPos := 1 / (l0*(1/triangle.viewVerts[0].z) + l1*(1/triangle.viewVerts[1].z) + l2*(1/triangle.viewVerts[2].z))
 				idx := int(x) + (int(y))*scene.width
 
 				if zPos > scene.zBuffer[idx] {
@@ -312,7 +316,7 @@ func main() {
 		scene.processFrame(pressedKeys)
 		cv.PutImageData(scene.render(), 0, 0)
 
-		if false {
+		if true {
 			fmt.Println(wnd.FPS(), "Triangles = ", scene.trianglesDrawn)
 		}
 	})

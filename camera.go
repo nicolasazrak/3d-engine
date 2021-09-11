@@ -10,11 +10,6 @@ type Camera interface {
 	rotate(yaw, pitch float64)
 }
 
-const nearPlane = 0.1
-const farPlane = 50
-const fovX = math.Pi / 2
-const fovY = math.Pi / 2
-
 type LookAtCamera struct {
 	position         Vector3
 	target           Vector3
@@ -34,12 +29,35 @@ type FPSCamera struct {
 }
 
 func buildProjectionMatrix() [4][4]float64 {
+	nearPlane := .1
+	farPlane := 50.
+
+	leftPlane := -.1
+	rightPlane := .1
+
+	topPlane := .1
+	bottomPlane := -.1
+
+	fovX := math.Pi / 2
+	fovY := math.Pi / 2
+
+	useOpenGlMatrix := true
+
 	// http://www.songho.ca/opengl/gl_projectionmatrix.html
-	return [4][4]float64{
-		{1 / math.Tan(fovX/2), 0, 0, 0},
-		{0, 1 / math.Tan(fovY/2), 0, 0},
-		{0, 0, -(farPlane / (farPlane - nearPlane)), -1},
-		{0, 0, -((farPlane * nearPlane) / (farPlane - nearPlane)), 0},
+	if useOpenGlMatrix {
+		return [4][4]float64{
+			{(2 * nearPlane) / (rightPlane - leftPlane), 0, 0, 0},
+			{0, (2 * nearPlane) / (topPlane - bottomPlane), 0, 0},
+			{(rightPlane + leftPlane) / (rightPlane - leftPlane), (topPlane + bottomPlane) / (topPlane - bottomPlane), -((farPlane + nearPlane) / (farPlane - nearPlane)), -1},
+			{0, 0, -((2 * farPlane * nearPlane) / (farPlane - nearPlane)), 0},
+		}
+	} else {
+		return [4][4]float64{
+			{1 / math.Tan(fovX/2), 0, 0, 0},
+			{0, 1 / math.Tan(fovY/2), 0, 0},
+			{0, 0, -(farPlane / (farPlane - nearPlane)), -1},
+			{0, 0, -((farPlane * nearPlane) / (farPlane - nearPlane)), 0},
+		}
 	}
 }
 
@@ -184,77 +202,20 @@ func (cam *FPSCamera) updateViewMatrix() {
 
 /** General method */
 
-func projectTriangle(triangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64) []*ProjectedTriangle {
-	initialTriangle := newProjectedTriangle()
+func projectTriangle(originalTriangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64) []*ProjectedTriangle {
+	projection := newProjectedTriangle()
 
 	for i := 0; i < 3; i++ {
-		view := matmult4(viewMatrix, triangle.worldVerts[i], 1)
+		view := matmult4(viewMatrix, originalTriangle.worldVerts[i], 1)
 		clip := matmult4h(projectionMatrix, view)
+		normal := matmult(normalMatrix, originalTriangle.normals[i], 0 /* This should be 0. Why do I need to make it 1? */)
 
-		initialTriangle.clipVertex[i] = clip
-		initialTriangle.viewVerts[i].x = view.x / view.w
-		initialTriangle.viewVerts[i].y = view.y / view.w
-		initialTriangle.viewVerts[i].z = view.z / view.w
-
-		ndc := Vector3{x: clip.x / clip.w, y: clip.y / clip.w}
-
-		initialTriangle.viewportVerts[i].x = (ndc.x + 1.) * width * .5
-		initialTriangle.viewportVerts[i].y = (ndc.y + 1.) * height * .5
-
-		res2 := matmult(normalMatrix, triangle.normals[i], 0 /* This should be 0. Why do I need to make it 1? */)
-		initialTriangle.viewNormals[i] = normalize(res2)
-
-		initialTriangle.invViewZ[i] = 1 / initialTriangle.viewVerts[i].z
+		projection.clipVertex[i] = clip
+		projection.viewVerts[i].x = view.x / view.w
+		projection.viewVerts[i].y = view.y / view.w
+		projection.viewVerts[i].z = view.z / view.w
+		projection.viewNormals[i] = normalize(normal)
 	}
 
-	return clipTriangle(initialTriangle, []*ProjectedTriangle{})
-}
-
-func clipTriangle(triangle *ProjectedTriangle, projection []*ProjectedTriangle) []*ProjectedTriangle {
-	// TODO
-
-	clip := triangle.clipVertex
-
-	if inFrustrum(clip[0]) {
-		if inFrustrum(clip[1]) {
-			if inFrustrum(clip[2]) {
-				projection = append(projection, triangle)
-			} else {
-				// t1, t2 := split(triangle, 0, 2, 1)
-				// projection = clipTriangle(t1, projection)
-				// projection = clipTriangle(t2, projection)
-			}
-		} else {
-			// t1, t2 := split(triangle, 0, 1, 2)
-			// projection = clipTriangle(t1, projection)
-			// projection = clipTriangle(t2, projection)
-		}
-	} else {
-		if inFrustrum(clip[1]) {
-			// t1, t2 := split(triangle, 1, 0, 2)
-			// projection = clipTriangle(t1, projection)
-			// projection = clipTriangle(t2, projection)
-		} else {
-			if inFrustrum(clip[2]) {
-				// t1, t2 := split(triangle, 2, 0, 1)
-				// projection = clipTriangle(t1, projection)
-				// projection = clipTriangle(t2, projection)
-			}
-		}
-	}
-
-	return projection
-}
-
-func split(triangle *ProjectedTriangle, insideIdx, outsideIdx, otherIdx int) (*ProjectedTriangle, *ProjectedTriangle) {
-	// TODO
-	return triangle, nil
-}
-
-func inFrustrum(clipVertex Vector4) bool {
-	return clipVertex.z < clipVertex.w && clipVertex.z > 0
-	// TODO
-	// return clipVertex.x < clipVertex.w && clipVertex.x > -clipVertex.w &&
-	// 	clipVertex.y < clipVertex.w && clipVertex.y > -clipVertex.w &&
-	// 	clipVertex.z < clipVertex.w && clipVertex.z > 0
+	return clipTriangle(projection)
 }

@@ -22,12 +22,10 @@ type Triangle struct {
 }
 
 type ProjectedTriangle struct {
-	viewVerts     []Vector3 // view space relative to camera
-	viewportVerts []Vector2
-	clipVertex    []Vector4
-	viewNormals   []Vector3 // view/camera space
-	uvMapping     [][]float64
-	invViewZ      []float64
+	viewVerts   []Vector3 // view space relative to camera
+	clipVertex  []Vector4
+	viewNormals []Vector3 // view/camera space
+	uvMapping   [][]float64
 }
 
 func newTriangle() *Triangle {
@@ -40,12 +38,10 @@ func newTriangle() *Triangle {
 
 func newProjectedTriangle() *ProjectedTriangle {
 	return &ProjectedTriangle{
-		viewVerts:     []Vector3{{}, {}, {}},
-		viewNormals:   []Vector3{{}, {}, {}},
-		viewportVerts: []Vector2{{}, {}, {}},
-		clipVertex:    []Vector4{{}, {}, {}},
-		uvMapping:     [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
-		invViewZ:      []float64{0, 0, 0},
+		viewVerts:   []Vector3{{}, {}, {}},
+		viewNormals: []Vector3{{}, {}, {}},
+		clipVertex:  []Vector4{{}, {}, {}},
+		uvMapping:   [][]float64{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}},
 	}
 }
 

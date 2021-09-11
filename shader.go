@@ -107,8 +107,8 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *ProjectedTrian
 		// Shoudln't be needed if there was occulsion culling or shadows ?
 		return 0, 0, 0
 	} else {
-		u := l0*t.uvMapping[0][0]*triangle.invViewZ[0] + l1*t.uvMapping[1][0]*triangle.invViewZ[1] + l2*t.uvMapping[2][0]*triangle.invViewZ[2]
-		v := l0*t.uvMapping[0][1]*triangle.invViewZ[0] + l1*t.uvMapping[1][1]*triangle.invViewZ[1] + l2*t.uvMapping[2][1]*triangle.invViewZ[2]
+		u := l0*t.uvMapping[0][0]*(1/triangle.viewVerts[0].z) + l1*t.uvMapping[1][0]*(1/triangle.viewVerts[1].z) + l2*t.uvMapping[2][0]*(1/triangle.viewVerts[2].z)
+		v := l0*t.uvMapping[0][1]*(1/triangle.viewVerts[0].z) + l1*t.uvMapping[1][1]*(1/triangle.viewVerts[1].z) + l2*t.uvMapping[2][1]*(1/triangle.viewVerts[2].z)
 		u *= z
 		v *= z
 
@@ -135,8 +135,8 @@ type LineShader struct {
 	g         uint8
 	b         uint8
 	lineR     uint8
-	lineB     uint8
 	lineG     uint8
+	lineB     uint8
 	thickness float64
 }
 
@@ -146,7 +146,7 @@ func (shader *LineShader) shade(scene *Scene, triangle *ProjectedTriangle, coord
 	l2 := coordinates[2]
 
 	if l0 < shader.thickness || l1 < shader.thickness || l2 < shader.thickness {
-		return uint8(float64(shader.lineR)), uint8(float64(shader.lineB)), uint8(float64(shader.lineB))
+		return uint8(float64(shader.lineR)), uint8(float64(shader.lineG)), uint8(float64(shader.lineB))
 	} else {
 		return shader.r, shader.g, shader.b
 	}
