@@ -89,6 +89,10 @@ func minus(a Vector3, b Vector3) Vector3 {
 	return Vector3{x: a.x - b.x, y: a.y - b.y, z: a.z - b.z}
 }
 
+func plus(a Vector3, b Vector3) Vector3 {
+	return Vector3{x: a.x + b.x, y: a.y + b.y, z: a.z + b.z}
+}
+
 func baycentricCoordinates(x float64, y float64, triangle []Vector3) Vector3 {
 	v0 := Vector3{triangle[2].x - triangle[0].x, triangle[1].x - triangle[0].x, triangle[0].x - x}
 	v1 := Vector3{triangle[2].y - triangle[0].y, triangle[1].y - triangle[0].y, triangle[0].y - y}

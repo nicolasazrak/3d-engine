@@ -49,14 +49,12 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
 	if minbbox.x >= maxbbox.x || minbbox.y >= maxbbox.y {
 		// pseudo frustrum culling
-		// fmt.Println("bounding box culled")
 		return
 	}
 
 	area := 1. / float64(orient2d(pts[0], pts[1], pts[2].x, pts[2].y))
 	if area <= 0 {
 		// pseudo backface culling
-		// fmt.Println("wrong orientation")
 		return
 	}
 
@@ -177,29 +175,31 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 
 	mov = scene.camera.transformInput(mov)
 
-	dst := Vector3{x: position.x + mov.x, y: position.y + mov.y, z: position.z + mov.z}
+	collided := true
+	for collided {
+		collided = false
+		minD := 999999.
+		newNorm := Vector3{}
+		dst := plus(mov, position)
 
-	minD := 999999.
-	closestNorm := Vector3{}
-	collided := false
+		for _, obstacle := range scene.obstacles {
+			c, norm, d := obstacle.test(position, dst, mov)
+			if c && d < minD {
+				minD = d
+				newNorm = norm
+				collided = true
+			}
+		}
 
-	for _, obstacle := range scene.obstacles {
-		c, norm, d := obstacle.test(position, dst, mov)
-		if c && d < minD {
-			fmt.Println(norm, mov)
-			closestNorm = norm
-			minD = d
-			collided = true
+		if collided {
+			mov = Vector3{
+				x: mov.x - math.Abs(newNorm.x)*mov.x,
+				y: mov.y - math.Abs(newNorm.y)*mov.y,
+				z: mov.z - math.Abs(newNorm.z)*mov.z,
+			}
 		}
 	}
 
-	if collided {
-		mov = Vector3{
-			x: mov.x - math.Abs(closestNorm.x)*mov.x,
-			y: mov.y - math.Abs(closestNorm.y)*mov.y,
-			z: mov.z - math.Abs(closestNorm.z)*mov.z,
-		}
-	}
 	scene.camera.move(mov)
 }
 
@@ -332,7 +332,7 @@ func main() {
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 4)
+	scene := newScene(cv.Width(), cv.Height(), 8)
 	addModels(scene)
 
 	// endProfile := takeProfile()
