@@ -31,6 +31,7 @@ type Scene struct {
 	camera         Camera
 	models         []*Model
 	obstacles      []Collisionable
+	setAtCalled    int
 
 	// frame stats
 	t                 float64
@@ -94,34 +95,55 @@ func (scene *Scene) drawModels() {
 }
 
 func (scene *Scene) setAt(x int, yInverted int, r uint8, g uint8, b uint8) {
-	for xScale := 0; xScale < scene.scaleFactor; xScale++ {
-		for yScale := 0; yScale < scene.scaleFactor; yScale++ {
-			y := scene.height - yInverted - 1
-
-			finalX := x*scene.scaleFactor + xScale
-			finalY := y*scene.scaleFactor + yScale
-
-			pixIdx := (finalX + finalY*scene.width*scene.scaleFactor) * 4
-			scene.pixBuffer[pixIdx] = r
-			scene.pixBuffer[pixIdx+1] = g
-			scene.pixBuffer[pixIdx+2] = b
-			scene.pixBuffer[pixIdx+3] = uint8(255)
-		}
-	}
+	scene.setAtCalled++
+	y := scene.height - yInverted - 1
+	pixIdx := (x + y*scene.width) * 4
+	scene.pixBuffer[pixIdx] = r
+	scene.pixBuffer[pixIdx+1] = g
+	scene.pixBuffer[pixIdx+2] = b
+	scene.pixBuffer[pixIdx+3] = uint8(255)
 }
 
 func (scene *Scene) toImage() *image.RGBA {
-	image := &image.RGBA{
-		Pix:    scene.pixBuffer,
-		Stride: scene.width * 4 * scene.scaleFactor,
+	scaledBuffer := make([]uint8, scene.width*scene.height*4*scene.scaleFactor*scene.scaleFactor)
+
+	scaled := &image.RGBA{
+		Pix:    scaledBuffer,
+		Stride: scene.width * scene.scaleFactor * 4,
 		Rect:   image.Rect(0, 0, scene.width*scene.scaleFactor, scene.height*scene.scaleFactor),
 	}
 
-	return image
+	srcPixIdx := 0
+	dstPixIdx := 0
+	lineLength := scene.width * 4 * scene.scaleFactor
+
+	for y := 0; y < scene.height; y++ {
+		startLinePix := dstPixIdx
+		for x := 0; x < scene.width; x++ {
+			r := scene.pixBuffer[srcPixIdx]
+			g := scene.pixBuffer[srcPixIdx+1]
+			b := scene.pixBuffer[srcPixIdx+2]
+			for i := 0; i < scene.scaleFactor; i++ {
+				scaledBuffer[dstPixIdx] = r
+				scaledBuffer[dstPixIdx+1] = g
+				scaledBuffer[dstPixIdx+2] = b
+				scaledBuffer[dstPixIdx+3] = 255
+				dstPixIdx += 4
+			}
+			srcPixIdx += 4
+		}
+		for i := 0; i < (scene.scaleFactor - 1); i++ {
+			copy(scaledBuffer[dstPixIdx:dstPixIdx+lineLength], scaledBuffer[startLinePix:+startLinePix+lineLength])
+			dstPixIdx += lineLength
+		}
+	}
+
+	return scaled
 }
 
 func (scene *Scene) cleanBuffer() {
 	scene.trianglesDrawn = 0
+	scene.setAtCalled = 0
 	copy(scene.pixBuffer[:], scene.cleanPixBuffer[:])
 	copy(scene.zBuffer[:], scene.cleanZBuffer[:])
 }
@@ -234,8 +256,8 @@ func newScene(width int, height int, scaleFactor int) *Scene {
 		lastFrame:     time.Now(),
 	}
 
-	scene.pixBuffer = make([]uint8, scene.width*scene.height*4*scene.scaleFactor*scaleFactor)
-	scene.cleanPixBuffer = make([]uint8, scene.width*scene.height*4*scene.scaleFactor*scaleFactor)
+	scene.pixBuffer = make([]uint8, scene.width*scene.height*4)
+	scene.cleanPixBuffer = make([]uint8, scene.width*scene.height*4)
 	scene.zBuffer = make([]float64, scene.width*scene.height)
 	scene.cleanZBuffer = make([]float64, scene.width*scene.height)
 	for idx := 0; idx < len(scene.cleanPixBuffer); idx += 4 {
@@ -273,72 +295,65 @@ func addModels(scene *Scene) {
 		scene.models = append(scene.models, backWall)
 	}
 
-	red := &SmoothColorShader{170, 30, 30}
-	blue := &SmoothColorShader{30, 30, 130}
-	green := &SmoothColorShader{30, 143, 23}
-	purple := &SmoothColorShader{114, 48, 191}
-	grey := &FlatShader{100, 100, 100}
+	if true {
 
-	scenario := []string{
-		"XXXXXXXXXXXXXXXXXXXXXXXXXX",
-		"X          B     R      X",
-		"X          B     R      X",
-		"XRRRRRR    B     RRRR   X",
-		"X          B            X",
-		" X         BBBBBBBBBB   X",
-		" X         B            X",
-		" X    BBBBBB      G    X",
-		" X                G    X",
-		" X                G    X",
-		" X    RRRRRGGGGGGGG    X",
-		"X          G           X",
-		"X          G           X",
-		"XXXXXXXXXXXXXXXXXXXXXXXX",
-	}
+		red := &SmoothColorShader{170, 30, 30}
+		blue := &SmoothColorShader{30, 30, 130}
+		green := &SmoothColorShader{30, 143, 23}
+		purple := &SmoothColorShader{114, 48, 191}
+		grey := &FlatShader{100, 100, 100}
 
-	for y, line := range scenario {
-		for x, color := range line {
-			var model *Model = nil
-
-			if color == 'X' {
-				model = newCube(1, purple).moveX(float64(14 - x)).moveZ(float64(6 - y))
-			} else if color == 'G' {
-				model = newCube(1, green).moveX(float64(14 - x)).moveZ(float64(6 - y))
-			} else if color == 'B' {
-				model = newCube(1, blue).moveX(float64(14 - x)).moveZ(float64(6 - y))
-			} else if color == 'R' {
-				model = newCube(1, red).moveX(float64(14 - x)).moveZ(float64(6 - y))
-			}
-
-			if model != nil {
-				scene.models = append(scene.models, model)
-				scene.obstacles = append(scene.obstacles, newCollisionableFromModel(model))
-			}
-
-			scene.models = append(scene.models, newCube(1, grey).moveX(float64(14-x)).moveZ(float64(6-y)).moveY(-1.))
+		scenario := []string{
+			"XXXXXXXXXXXXXXXXXXXXXXXXXX",
+			"X          B     R      X",
+			"X          B     R      X",
+			"XRRRRRR    B     RRRR   X",
+			"X          B            X",
+			" X         BBBBBBBBBB   X",
+			" X         B            X",
+			" X    BBBBBB      G    X",
+			" X                G    X",
+			" X                G    X",
+			" X    RRRRRGGGGGGGG    X",
+			"X          G           X",
+			"X          G           X",
+			"XXXXXXXXXXXXXXXXXXXXXXXX",
 		}
-	}
-}
 
-func takeProfile() func() {
-	f, err := os.Create("cpu")
-	if err != nil {
-		panic(err)
-	}
-	pprof.StartCPUProfile(f)
-	return func() {
-		pprof.StopCPUProfile()
+		for y, line := range scenario {
+			for x, color := range line {
+				var model *Model = nil
+
+				if color == 'X' {
+					model = newCube(1, purple).moveX(float64(14 - x)).moveZ(float64(6 - y))
+				} else if color == 'G' {
+					model = newCube(1, green).moveX(float64(14 - x)).moveZ(float64(6 - y))
+				} else if color == 'B' {
+					model = newCube(1, blue).moveX(float64(14 - x)).moveZ(float64(6 - y))
+				} else if color == 'R' {
+					model = newCube(1, red).moveX(float64(14 - x)).moveZ(float64(6 - y))
+				}
+
+				if model != nil {
+					scene.models = append(scene.models, model)
+					scene.obstacles = append(scene.obstacles, newCollisionableFromModel(model))
+				}
+
+				scene.models = append(scene.models, newCube(1, grey).moveX(float64(14-x)).moveZ(float64(6-y)).moveY(-1.))
+			}
+		}
+
 	}
 }
 
 func main() {
-	wnd, cv, err := sdlcanvas.CreateWindow(640, 480, "Hello")
+	wnd, cv, err := sdlcanvas.CreateWindow(1024, 1024, "Hello")
 	if err != nil {
 		panic(err)
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 4)
+	scene := newScene(cv.Width(), cv.Height(), 8)
 	addModels(scene)
 
 	f, err := os.Create("cpu")
@@ -366,7 +381,7 @@ func main() {
 		cv.PutImageData(scene.render(), 0, 0)
 
 		if true {
-			fmt.Println(wnd.FPS(), "Triangles = ", scene.trianglesDrawn)
+			fmt.Println(wnd.FPS(), "Triangles = ", scene.trianglesDrawn, "setAtCalled =", scene.setAtCalled)
 		}
 	})
 }
