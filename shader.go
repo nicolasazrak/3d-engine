@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"image"
-	"math"
 	"os"
 )
 
@@ -95,40 +94,23 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *ProjectedTrian
 
 	t := triangle
 
-	p := Vector3{
-		x: triangle.viewVerts[0].x*coordinates[0] + triangle.viewVerts[1].x*coordinates[1] + triangle.viewVerts[2].x*coordinates[2],
-		y: triangle.viewVerts[0].y*coordinates[0] + triangle.viewVerts[1].y*coordinates[1] + triangle.viewVerts[2].y*coordinates[2],
-		z: z,
-	}
+	u := l0*t.uvMapping[0][0]*(1/triangle.viewVerts[0].z) + l1*t.uvMapping[1][0]*(1/triangle.viewVerts[1].z) + l2*t.uvMapping[2][0]*(1/triangle.viewVerts[2].z)
+	v := l0*t.uvMapping[0][1]*(1/triangle.viewVerts[0].z) + l1*t.uvMapping[1][1]*(1/triangle.viewVerts[1].z) + l2*t.uvMapping[2][1]*(1/triangle.viewVerts[2].z)
+	u *= z
+	v *= z
 
-	intensity := 1. / norm(minus(p, scene.projectedLight))
-	intensity += 0.4 // ambient
+	x := int(u*textureShader.texture.width) % int(textureShader.texture.width)
+	y := int(v*textureShader.texture.height) % int(textureShader.texture.height)
+	idx := (x + y*int(textureShader.texture.width))
+	data := textureShader.texture.data[idx]
 
-	if intensity < 0 {
-		// Shoudln't be needed if there was occulsion culling or shadows ?
-		return 0, 0, 0
-	} else {
-		u := l0*t.uvMapping[0][0]*(1/triangle.viewVerts[0].z) + l1*t.uvMapping[1][0]*(1/triangle.viewVerts[1].z) + l2*t.uvMapping[2][0]*(1/triangle.viewVerts[2].z)
-		v := l0*t.uvMapping[0][1]*(1/triangle.viewVerts[0].z) + l1*t.uvMapping[1][1]*(1/triangle.viewVerts[1].z) + l2*t.uvMapping[2][1]*(1/triangle.viewVerts[2].z)
-		u *= z
-		v *= z
+	r := float64(data & 255)
+	g := float64((data >> 8) & 255)
+	b := float64((data >> 16) & 255)
 
-		if u < 0 || v < 0 {
-			// TODO remove this
-			return 0, 0, 0
-		}
+	intensity := l0*triangle.lightIntensity[0] + l1*triangle.lightIntensity[1] + l2*triangle.lightIntensity[2]
 
-		x := int(u*textureShader.texture.width) % int(textureShader.texture.width)
-		y := int(v*textureShader.texture.height) % int(textureShader.texture.height)
-		idx := (x + y*int(textureShader.texture.width))
-		data := textureShader.texture.data[idx]
-
-		r := float64(data & 255)
-		g := float64((data >> 8) & 255)
-		b := float64((data >> 16) & 255)
-
-		return clampColor(r * intensity), clampColor(g * intensity), clampColor(b * intensity)
-	}
+	return clampColor(r * intensity), clampColor(g * intensity), clampColor(b * intensity)
 }
 
 type LineShader struct {
@@ -171,21 +153,18 @@ type SmoothColorShader struct {
 }
 
 func (smoothColor *SmoothColorShader) shade(scene *Scene, triangle *ProjectedTriangle, coordinates [3]float64, z float64) (uint8, uint8, uint8) {
-	p := Vector3{
-		x: triangle.viewVerts[0].x*coordinates[0] + triangle.viewVerts[1].x*coordinates[1] + triangle.viewVerts[2].x*coordinates[2],
-		y: triangle.viewVerts[0].y*coordinates[0] + triangle.viewVerts[1].y*coordinates[1] + triangle.viewVerts[2].y*coordinates[2],
-		z: z,
-	}
+	l0 := coordinates[0]
+	l1 := coordinates[1]
+	l2 := coordinates[2]
 
-	intensity := 1. / (norm(minus(p, scene.projectedLight)))
-	intensity += 0.001 // ambient
-	intensity = math.Min(intensity, 1)
+	intensity := l0*triangle.lightIntensity[0] + l1*triangle.lightIntensity[1] + l2*triangle.lightIntensity[2]
+	intensity += .4
 
 	if intensity < 0 {
 		// Shoudln't be needed if there was occulsion culling or shadows ?
 		return 0, 0, 0
 	} else {
-		return uint8(intensity * smoothColor.r), uint8(intensity * smoothColor.g), uint8(intensity * smoothColor.b)
+		return clampColor(intensity * smoothColor.r), clampColor(intensity * smoothColor.g), clampColor(intensity * smoothColor.b)
 	}
 }
 

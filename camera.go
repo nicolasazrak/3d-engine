@@ -146,7 +146,7 @@ func (cam *LookAtCamera) project(scene *Scene) {
 	for _, model := range scene.models {
 		projection := []*ProjectedTriangle{}
 		for _, triangle := range model.triangles {
-			projection = append(projection, projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)...)
+			projection = append(projection, projectTriangle(triangle, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix, scene.projectedLight)...)
 		}
 		model.projection = projection
 	}
@@ -160,7 +160,7 @@ func (cam *FPSCamera) project(scene *Scene) {
 	for _, model := range scene.models {
 		model.projection = []*ProjectedTriangle{}
 		for _, triangle := range model.triangles {
-			model.projection = append(model.projection, projectTriangle(triangle, scene.fWidth, scene.fHeight, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix)...)
+			model.projection = append(model.projection, projectTriangle(triangle, cam.viewMatrix, cam.normalMatrix, cam.projectionMatrix, scene.projectedLight)...)
 		}
 	}
 }
@@ -224,7 +224,7 @@ func (cam *FPSCamera) getPosition() Vector3 {
 
 /** General method */
 
-func projectTriangle(originalTriangle *Triangle, width float64, height float64, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64) []*ProjectedTriangle {
+func projectTriangle(originalTriangle *Triangle, viewMatrix [4][4]float64, normalMatrix [4][4]float64, projectionMatrix [4][4]float64, light Vector3) []*ProjectedTriangle {
 	projection := newProjectedTriangle()
 
 	for i := 0; i < 3; i++ {
@@ -238,6 +238,7 @@ func projectTriangle(originalTriangle *Triangle, width float64, height float64, 
 		projection.viewVerts[i].z = view.z / view.w
 		projection.viewNormals[i] = normalize(normal)
 		projection.uvMapping = originalTriangle.uvMapping
+		projection.lightIntensity[i] = 1. / (norm(minus(projection.viewVerts[i], light)))
 	}
 
 	// TODO add backface culling

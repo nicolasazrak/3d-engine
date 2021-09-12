@@ -198,6 +198,10 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 	lightMove := scene.camera.transformInput(Vector3{0, 0, -1})
 	scene.lightPosition = plus(position, lightMove)
 
+	if mov.x == 0 && mov.y == 0 && mov.z == 0 {
+		return
+	}
+
 	mov = scene.camera.transformInput(mov)
 
 	collided := true
@@ -293,10 +297,7 @@ func addModels(scene *Scene) {
 		scene.models = append(scene.models, head)
 		scene.models = append(scene.models, ceiling)
 		scene.models = append(scene.models, backWall)
-	}
-
-	if true {
-
+	} else {
 		red := &SmoothColorShader{170, 30, 30}
 		blue := &SmoothColorShader{30, 30, 130}
 		green := &SmoothColorShader{30, 143, 23}
@@ -353,7 +354,7 @@ func main() {
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 8)
+	scene := newScene(cv.Width(), cv.Height(), 4)
 	addModels(scene)
 
 	f, err := os.Create("cpu")

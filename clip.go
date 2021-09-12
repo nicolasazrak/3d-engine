@@ -114,9 +114,14 @@ func clipTriangleWithOneVertexInside(triangle *ProjectedTriangle, planeToClip in
 			triangle.viewNormals[insideVertex],
 		},
 		uvMapping: [][]float64{
-			ponderateUv(triangle.uvMapping[nextIdx], triangle.uvMapping[insideVertex], t1),
-			ponderateUv(triangle.uvMapping[otherIdx], triangle.uvMapping[insideVertex], t2),
+			ponderateSlice3(triangle.uvMapping[nextIdx], triangle.uvMapping[insideVertex], t1),
+			ponderateSlice3(triangle.uvMapping[otherIdx], triangle.uvMapping[insideVertex], t2),
 			triangle.uvMapping[insideVertex],
+		},
+		lightIntensity: []float64{
+			t1*triangle.lightIntensity[nextIdx] + (1-t1)*triangle.lightIntensity[insideVertex],
+			t1*triangle.lightIntensity[otherIdx] + (1-t1)*triangle.lightIntensity[insideVertex],
+			triangle.lightIntensity[insideVertex],
 		},
 	}
 }
@@ -130,7 +135,8 @@ func clipTriangleWithTwoVertexInside(triangle *ProjectedTriangle, planeToClip in
 	newVewVert := ponderateVec3(triangle.viewVerts[nextIdx], triangle.viewVerts[outsideVertex], t1)
 	newClipVert := ponderateVec4(triangle.clipVertex[nextIdx], triangle.clipVertex[outsideVertex], t1)
 	newViewNormal := ponderateVec3(triangle.viewNormals[nextIdx], triangle.viewNormals[outsideVertex], t1)
-	newUvMapping := ponderateUv(triangle.uvMapping[nextIdx], triangle.uvMapping[outsideVertex], t1)
+	newUvMapping := ponderateSlice3(triangle.uvMapping[nextIdx], triangle.uvMapping[outsideVertex], t1)
+	newLightIntensity := triangle.lightIntensity[nextIdx]*t1 + (1-t1)*triangle.lightIntensity[outsideVertex]
 
 	triangle1 := ProjectedTriangle{
 		viewVerts: []Vector3{
@@ -153,6 +159,11 @@ func clipTriangleWithTwoVertexInside(triangle *ProjectedTriangle, planeToClip in
 			triangle.uvMapping[nextIdx],
 			triangle.uvMapping[otherIdx],
 		},
+		lightIntensity: []float64{
+			newLightIntensity,
+			triangle.lightIntensity[nextIdx],
+			triangle.lightIntensity[otherIdx],
+		},
 	}
 	triangle2 := ProjectedTriangle{
 		viewVerts: []Vector3{
@@ -171,9 +182,14 @@ func clipTriangleWithTwoVertexInside(triangle *ProjectedTriangle, planeToClip in
 			triangle.viewNormals[otherIdx],
 		},
 		uvMapping: [][]float64{
-			ponderateUv(triangle.uvMapping[otherIdx], triangle.uvMapping[outsideVertex], t2),
+			ponderateSlice3(triangle.uvMapping[otherIdx], triangle.uvMapping[outsideVertex], t2),
 			newUvMapping,
 			triangle.uvMapping[otherIdx],
+		},
+		lightIntensity: []float64{
+			t2*triangle.lightIntensity[otherIdx] + (1-t2)*triangle.lightIntensity[outsideVertex],
+			newLightIntensity,
+			triangle.lightIntensity[otherIdx],
 		},
 	}
 

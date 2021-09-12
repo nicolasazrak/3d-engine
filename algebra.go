@@ -141,7 +141,7 @@ func ponderateVec4(vec1 Vector4, vec2 Vector4, t float64) Vector4 {
 	}
 }
 
-func ponderateUv(slice1 []float64, slice2 []float64, t float64) []float64 {
+func ponderateSlice3(slice1 []float64, slice2 []float64, t float64) []float64 {
 	return []float64{
 		slice1[0]*t + (1-t)*slice2[0],
 		slice1[1]*t + (1-t)*slice2[1],
