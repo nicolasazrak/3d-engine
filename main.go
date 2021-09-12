@@ -68,18 +68,31 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 		return
 	}
 
+	A01 := v0.y - v1.y
+	B01 := v1.x - v0.x
+	A12 := v1.y - v2.y
+	B12 := v2.x - v1.x
+	A20 := v2.y - v0.y
+	B20 := v0.x - v2.x
+
+	w0_row := orient2d(v1, v2, minbbox.x, minbbox.y)
+	w1_row := orient2d(v2, v0, minbbox.x, minbbox.y)
+	w2_row := orient2d(v0, v1, minbbox.x, minbbox.y)
+
 	scene.trianglesDrawn++
 
 	invZ0 := 1 / triangle.viewVerts[0].z
 	invZ1 := 1 / triangle.viewVerts[1].z
 	invZ2 := 1 / triangle.viewVerts[2].z
 
-	// TODO re implement https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/ it was buggy before
+	// https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/
 	for y := minbbox.y; y <= maxbbox.y; y++ {
+		// Barycentric coordinates at start of row
+		w0 := w0_row
+		w1 := w1_row
+		w2 := w2_row
+
 		for x := minbbox.x; x < maxbbox.x; x++ {
-			w0 := orient2d(pts[1], pts[2], x, y)
-			w1 := orient2d(pts[2], pts[0], x, y)
-			w2 := orient2d(pts[0], pts[1], x, y)
 			if (w0 | w1 | w2) >= 0 {
 				l0 := float64(w0) * area
 				l1 := float64(w1) * area
@@ -95,7 +108,17 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 					scene.setAt(x, y, r, g, b)
 				}
 			}
+
+			// One step to the right
+			w0 += A12
+			w1 += A20
+			w2 += A01
 		}
+
+		// One row step
+		w0_row += B12
+		w1_row += B20
+		w2_row += B01
 	}
 }
 
