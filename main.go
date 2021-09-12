@@ -42,16 +42,16 @@ type Scene struct {
 
 func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 	v0 := Vector2{
-		x: int(math.Ceil(((triangle.clipVertex[0].x / triangle.clipVertex[0].w) + 1) * scene.fWidth * 0.5)),
-		y: int(math.Ceil(((triangle.clipVertex[0].y / triangle.clipVertex[0].w) + 1) * scene.fHeight * 0.5)),
+		x: int(math.Round(((triangle.clipVertex[0].x / triangle.clipVertex[0].w) + 1) * (scene.fWidth - 1) * 0.5)),
+		y: int(math.Round(((triangle.clipVertex[0].y / triangle.clipVertex[0].w) + 1) * (scene.fHeight - 1) * 0.5)),
 	}
 	v1 := Vector2{
-		x: int(math.Ceil(((triangle.clipVertex[1].x / triangle.clipVertex[1].w) + 1) * scene.fWidth * 0.5)),
-		y: int(math.Ceil(((triangle.clipVertex[1].y / triangle.clipVertex[1].w) + 1) * scene.fHeight * 0.5)),
+		x: int(math.Round(((triangle.clipVertex[1].x / triangle.clipVertex[1].w) + 1) * (scene.fWidth - 1) * 0.5)),
+		y: int(math.Round(((triangle.clipVertex[1].y / triangle.clipVertex[1].w) + 1) * (scene.fHeight - 1) * 0.5)),
 	}
 	v2 := Vector2{
-		x: int(math.Ceil(((triangle.clipVertex[2].x / triangle.clipVertex[2].w) + 1) * scene.fWidth * 0.5)),
-		y: int(math.Ceil(((triangle.clipVertex[2].y / triangle.clipVertex[2].w) + 1) * scene.fHeight * 0.5)),
+		x: int(math.Round(((triangle.clipVertex[2].x / triangle.clipVertex[2].w) + 1) * (scene.fWidth - 1) * 0.5)),
+		y: int(math.Round(((triangle.clipVertex[2].y / triangle.clipVertex[2].w) + 1) * (scene.fHeight - 1) * 0.5)),
 	}
 
 	pts := []Vector2{v0, v1, v2}
@@ -102,7 +102,7 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 				zPos := 1 / (l0*invZ0 + l1*invZ1 + l2*invZ2)
 				idx := x + (y)*scene.width
 
-				if zPos > scene.zBuffer[idx] {
+				if zPos < 0 && zPos > scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
 					r, g, b := model.shader.shade(scene, triangle, [3]float64{l0, l1, l2}, zPos)
 					scene.setAt(x, y, r, g, b)
@@ -390,7 +390,7 @@ func main() {
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 8)
+	scene := newScene(cv.Width(), cv.Height(), 4)
 	addModels(scene)
 
 	f, err := os.Create("cpu")
@@ -406,6 +406,9 @@ func main() {
 	}
 	wnd.KeyUp = func(scancode int, rn rune, name string) {
 		delete(pressedKeys, name)
+	}
+	wnd.MouseDown = func(button, x, y int) {
+		fmt.Println("Click x =", x/(scene.scaleFactor/2), "y =", y/(scene.scaleFactor/2))
 	}
 
 	// scene.processFrame()

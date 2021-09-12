@@ -45,8 +45,8 @@ func boundingBox(pts []Vector2, minx int, maxx int, miny int, maxy int) (Vector2
 	ptsmaxy := max(pts[0].y, max(pts[1].y, pts[2].y))
 
 	minP := Vector2{
-		y: max(miny, min(ptsminy, maxy)),
 		x: max(minx, min(ptsminx, maxx)),
+		y: max(miny, min(ptsminy, maxy)),
 	}
 	maxP := Vector2{
 		x: min(maxx, max(ptsmaxx, minx)),

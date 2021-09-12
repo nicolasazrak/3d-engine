@@ -100,6 +100,7 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *ProjectedTrian
 	v *= z
 
 	if u < 0 || v < 0 {
+		// TODO investigate why this happens
 		return 0, 0, 0
 	}
 
