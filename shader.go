@@ -99,6 +99,10 @@ func (textureShader *TextureShader) shade(scene *Scene, triangle *ProjectedTrian
 	u *= z
 	v *= z
 
+	if u < 0 || v < 0 {
+		return 0, 0, 0
+	}
+
 	x := int(u*textureShader.texture.width) % int(textureShader.texture.width)
 	y := int(v*textureShader.texture.height) % int(textureShader.texture.height)
 	idx := (x + y*int(textureShader.texture.width))

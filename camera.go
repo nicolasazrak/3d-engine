@@ -230,13 +230,13 @@ func projectTriangle(originalTriangle *Triangle, viewMatrix [4][4]float64, norma
 	for i := 0; i < 3; i++ {
 		view := matmult4(viewMatrix, originalTriangle.worldVerts[i], 1)
 		clip := matmult4h(projectionMatrix, view)
-		normal := matmult(normalMatrix, originalTriangle.normals[i], 1 /* This should be 0. Why do I need to make it 1? */)
+		normal := normalize(matmult(normalMatrix, originalTriangle.normals[i], 1 /* This should be 0. Why do I need to make it 1? */))
 
 		projection.clipVertex[i] = clip
 		projection.viewVerts[i].x = view.x / view.w
 		projection.viewVerts[i].y = view.y / view.w
 		projection.viewVerts[i].z = view.z / view.w
-		projection.viewNormals[i] = normalize(normal)
+		projection.viewNormals[i] = normal
 		projection.uvMapping = originalTriangle.uvMapping
 		projection.lightIntensity[i] = 1. / (norm(minus(projection.viewVerts[i], light)))
 	}

@@ -41,13 +41,22 @@ type Scene struct {
 }
 
 func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
-	pts := []Vector2{
-		{((triangle.clipVertex[0].x / triangle.clipVertex[0].w) + 1) * scene.fWidth * 0.5, ((triangle.clipVertex[0].y / triangle.clipVertex[0].w) + 1) * scene.fHeight * 0.5},
-		{((triangle.clipVertex[1].x / triangle.clipVertex[1].w) + 1) * scene.fWidth * 0.5, ((triangle.clipVertex[1].y / triangle.clipVertex[1].w) + 1) * scene.fHeight * 0.5},
-		{((triangle.clipVertex[2].x / triangle.clipVertex[2].w) + 1) * scene.fWidth * 0.5, ((triangle.clipVertex[2].y / triangle.clipVertex[2].w) + 1) * scene.fHeight * 0.5},
+	v0 := Vector2{
+		x: int(math.Ceil(((triangle.clipVertex[0].x / triangle.clipVertex[0].w) + 1) * scene.fWidth * 0.5)),
+		y: int(math.Ceil(((triangle.clipVertex[0].y / triangle.clipVertex[0].w) + 1) * scene.fHeight * 0.5)),
+	}
+	v1 := Vector2{
+		x: int(math.Ceil(((triangle.clipVertex[1].x / triangle.clipVertex[1].w) + 1) * scene.fWidth * 0.5)),
+		y: int(math.Ceil(((triangle.clipVertex[1].y / triangle.clipVertex[1].w) + 1) * scene.fHeight * 0.5)),
+	}
+	v2 := Vector2{
+		x: int(math.Ceil(((triangle.clipVertex[2].x / triangle.clipVertex[2].w) + 1) * scene.fWidth * 0.5)),
+		y: int(math.Ceil(((triangle.clipVertex[2].y / triangle.clipVertex[2].w) + 1) * scene.fHeight * 0.5)),
 	}
 
-	minbbox, maxbbox := boundingBox(pts, 0, scene.fWidth-1, 0, scene.fHeight-1)
+	pts := []Vector2{v0, v1, v2}
+
+	minbbox, maxbbox := boundingBox(pts, 0, scene.width-1, 0, scene.height-1)
 	if minbbox.x >= maxbbox.x || minbbox.y >= maxbbox.y {
 		// pseudo frustrum culling
 		return
@@ -61,6 +70,10 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 
 	scene.trianglesDrawn++
 
+	invZ0 := 1 / triangle.viewVerts[0].z
+	invZ1 := 1 / triangle.viewVerts[1].z
+	invZ2 := 1 / triangle.viewVerts[2].z
+
 	// TODO re implement https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/ it was buggy before
 	for y := minbbox.y; y <= maxbbox.y; y++ {
 		for x := minbbox.x; x < maxbbox.x; x++ {
@@ -73,13 +86,13 @@ func (scene *Scene) drawTriangle(model *Model, triangle *ProjectedTriangle) {
 				l2 := float64(w2) * area
 
 				// Should the z-buffer use the ndc value ??
-				zPos := 1 / (l0*(1/triangle.viewVerts[0].z) + l1*(1/triangle.viewVerts[1].z) + l2*(1/triangle.viewVerts[2].z))
-				idx := int(x) + (int(y))*scene.width
+				zPos := 1 / (l0*invZ0 + l1*invZ1 + l2*invZ2)
+				idx := x + (y)*scene.width
 
 				if zPos > scene.zBuffer[idx] {
 					scene.zBuffer[idx] = zPos
 					r, g, b := model.shader.shade(scene, triangle, [3]float64{l0, l1, l2}, zPos)
-					scene.setAt(int(x), int(y), r, g, b)
+					scene.setAt(x, y, r, g, b)
 				}
 			}
 		}
@@ -195,7 +208,7 @@ func (scene *Scene) handleKeys(pressedKeys map[string]bool) {
 		}
 	}
 
-	lightMove := scene.camera.transformInput(Vector3{0, 0, -1})
+	lightMove := scene.camera.transformInput(Vector3{0, 0, -.3})
 	scene.lightPosition = plus(position, lightMove)
 
 	if mov.x == 0 && mov.y == 0 && mov.z == 0 {
@@ -354,7 +367,7 @@ func main() {
 	}
 	defer wnd.Destroy()
 
-	scene := newScene(cv.Width(), cv.Height(), 4)
+	scene := newScene(cv.Width(), cv.Height(), 8)
 	addModels(scene)
 
 	f, err := os.Create("cpu")

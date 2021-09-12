@@ -19,27 +19,41 @@ type Vector3 struct {
 }
 
 type Vector2 struct {
-	x float64
-	y float64
+	x int
+	y int
 }
 
-func boundingBox(pts []Vector2, minx float64, maxx float64, miny float64, maxy float64) (Vector2, Vector2) {
-	ptsminx := math.Min(pts[0].x, math.Min(pts[1].x, pts[2].x))
-	ptsmaxx := math.Max(pts[0].x, math.Max(pts[1].x, pts[2].x))
-
-	ptsminy := math.Min(pts[0].y, math.Min(pts[1].y, pts[2].y))
-	ptsmaxy := math.Max(pts[0].y, math.Max(pts[1].y, pts[2].y))
-
-	min := Vector2{
-		y: math.Max(miny, math.Floor(math.Min(ptsminy, maxy))),
-		x: math.Max(minx, math.Floor(math.Min(ptsminx, maxx))),
+func min(a, b int) int {
+	if a < b {
+		return a
 	}
-	max := Vector2{
-		x: math.Min(maxx, math.Ceil(math.Max(ptsmaxx, minx))),
-		y: math.Min(maxy, math.Ceil(math.Max(ptsmaxy, miny))),
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func boundingBox(pts []Vector2, minx int, maxx int, miny int, maxy int) (Vector2, Vector2) {
+	ptsminx := min(pts[0].x, min(pts[1].x, pts[2].x))
+	ptsmaxx := max(pts[0].x, max(pts[1].x, pts[2].x))
+
+	ptsminy := min(pts[0].y, min(pts[1].y, pts[2].y))
+	ptsmaxy := max(pts[0].y, max(pts[1].y, pts[2].y))
+
+	minP := Vector2{
+		y: max(miny, min(ptsminy, maxy)),
+		x: max(minx, min(ptsminx, maxx)),
+	}
+	maxP := Vector2{
+		x: min(maxx, max(ptsmaxx, minx)),
+		y: min(maxy, max(ptsmaxy, miny)),
 	}
 
-	return min, max
+	return minP, maxP
 }
 
 func crossProduct(a Vector3, b Vector3) Vector3 {
@@ -105,7 +119,7 @@ func baycentricCoordinates(x float64, y float64, triangle []Vector3) Vector3 {
 	return Vector3{1. - (u.x+u.y)/u.z, u.y / u.z, u.x / u.z}
 }
 
-func orient2d(a Vector2, b Vector2, x float64, y float64) int {
+func orient2d(a Vector2, b Vector2, x int, y int) int {
 	return int((b.x-a.x)*(y-a.y) - (b.y-a.y)*(x-a.x))
 }
 
@@ -114,13 +128,6 @@ func ponderate(pts []Vector3, weights []float64) Vector3 {
 		x: pts[0].x*weights[0] + pts[1].x*weights[1] + pts[2].x*weights[2],
 		y: pts[0].y*weights[0] + pts[1].y*weights[1] + pts[2].y*weights[2],
 		z: pts[0].z*weights[0] + pts[1].z*weights[1] + pts[2].z*weights[2],
-	}
-}
-
-func ponderateVec2(vec1 Vector2, vec2 Vector2, t float64) Vector2 {
-	return Vector2{
-		x: vec1.x*t + (1-t)*vec2.x,
-		y: vec1.y*t + (1-t)*vec2.y,
 	}
 }
 
