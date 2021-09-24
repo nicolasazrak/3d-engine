@@ -1,5 +1,6 @@
+/target
+.vscode
+out.png
 .DS_Store
-cpu
-*.gif
-renderer
-benchk/*
+.idea
+flamegraph.svg

@@ -1,6 +1,6 @@
 # Renderer
 
-A simple real-time 3d renderer writen from scratch in go using a frame buffer. 
+A simple real-time 3d renderer writen from scratch in rust using a frame buffer. 
 
 ![screenshot.jpg](screenshot.jpg)
 
